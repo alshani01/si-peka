@@ -28,6 +28,20 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $userRole = auth()->user()->role;
+        $intendedUrl = session()->get('url.intended');
+
+        // Hapus intended URL jika akun yang login tidak berhak mengakses prefix URL tersebut
+        if ($intendedUrl) {
+            if (str_contains($intendedUrl, '/admin') && !in_array($userRole, ['admin', 'pimpinan'])) {
+                session()->forget('url.intended');
+            } elseif (str_contains($intendedUrl, '/atasan') && $userRole !== 'atasan') {
+                session()->forget('url.intended');
+            } elseif (str_contains($intendedUrl, '/pjlp') && $userRole !== 'pjlp') {
+                session()->forget('url.intended');
+            }
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

@@ -48,8 +48,8 @@
                 </div>
             @endif
 
-            <!-- TAB MENU NAVIGATION -->
-            <div class="bg-white p-2 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+            <!-- TAB MENU NAVIGATION (Khusus Desktop) -->
+            <div class="hidden md:block bg-white p-2 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-[500px] sm:min-w-0">
                     <!-- Dashboard -->
                     <a href="{{ route('pjlp.dashboard') }}" 

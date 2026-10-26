@@ -47,8 +47,8 @@
                 </div>
             @endif
 
-            <!-- TAB MENU NAVIGATION -->
-            <div class="bg-white p-2 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+            <!-- TAB MENU NAVIGATION (Khusus Desktop) -->
+            <div class="hidden md:block bg-white p-2 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-[500px] sm:min-w-0">
                     <a href="{{ route('pjlp.dashboard') }}" class="text-center py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap {{ request()->routeIs('pjlp.dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50' }}">
                         Dashboard
@@ -142,7 +142,7 @@
                         <form method="GET" action="{{ route('pjlp.cuti.index') }}" class="flex items-center gap-2">
                             <select name="tahun" class="border-gray-300 rounded-xl text-xs p-2.5 focus:ring-blue-500 focus:border-blue-500">
                                 @for ($y = date('Y'); $y >= 2024; $y--)
-                                    <option value="{{ $y }}" {{ $tahun ==$y ? 'selected' : '' }}>
+                                    <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>
                                         Tahun {{ $y }}
                                     </option>
                                 @endfor
