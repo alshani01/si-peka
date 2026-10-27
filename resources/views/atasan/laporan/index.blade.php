@@ -254,7 +254,7 @@
                                                                             <button type="button" 
                                                                                     @click="openModal = true; modalData = {
                                                                                         nama: '{{ addslashes($subItem->user->name) }}',
-                                                                                        file_bukti: '{{ $subItem->file_bukti ? asset('storage/bukti_kinerja/' . $subItem->file_bukti) : '' }}',
+                                                                                        file_bukti: '{{ $subItem->file_bukti ? asset('storage/' . $subItem->file_bukti) : '' }}',
                                                                                         actionUrl: '{{ route('atasan.validasi', $subItem->id) }}'
                                                                                     }" 
                                                                                     class="px-3 py-1.5 bg-yellow-500 text-white rounded-xl text-xs font-bold hover:bg-yellow-600 transition">
