@@ -92,7 +92,7 @@
                                 @if(in_array(strtolower($kegiatan->status_validasi), ['disetujui', 'acc']))
                                     <span class="badge-acc">Disetujui</span>
                                 @elseif(in_array(strtolower($kegiatan->status_validasi), ['direvisi', 'ditolak', 'revisi']))
-                                    <span class="badge-revisi">Revisi</span>
+                                    <span class="badge-revisi">Ditolak</span>
                                 @else
                                     <span class="badge-pending">Pending</span>
                                 @endif

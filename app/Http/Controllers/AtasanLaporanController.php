@@ -149,10 +149,10 @@ class AtasanLaporanController extends Controller
     public function validasi(Request $request, $id)
     {
         $request->validate([
-            'status_validasi' => 'required|in:disetujui,direvisi',
-            'catatan_atasan'  => 'required_if:status_validasi,direvisi|nullable|string'
+            'status_validasi' => 'required|in:disetujui,ditolak',
+            'catatan_atasan'  => 'required_if:status_validasi,ditolak|nullable|string'
         ], [
-            'catatan_atasan.required_if' => 'Catatan atasan wajib diisi jika laporan direvisi!'
+            'catatan_atasan.required_if' => 'Catatan atasan wajib diisi jika laporan ditolak!'
         ]);
 
         $laporan = LaporanKinerja::findOrFail($id);
@@ -161,7 +161,7 @@ class AtasanLaporanController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        // Simpan langsung $request->catatan_atasan tanpa di-null-kan saat disetujui
+        // Simpan keputusan atasan beserta catatan
         $laporan->update([
             'status_validasi' => $request->status_validasi,
             'catatan_atasan'  => $request->catatan_atasan,

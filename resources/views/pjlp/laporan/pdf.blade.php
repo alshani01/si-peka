@@ -10,7 +10,7 @@
         
         .info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 9px; }
         .info-table td { padding: 3px 4px; vertical-align: top; }
-        .info-label { font-weight: bold; width: 15%; uppercase; }
+        .info-label { font-weight: bold; width: 15%; text-transform: uppercase; }
         .info-separator { width: 2%; text-align: center; font-weight: bold; }
         
         table.data-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
@@ -18,7 +18,7 @@
         table.data-table th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; font-size: 8px; text-align: center; }
         
         .badge-acc { color: #059669; font-weight: bold; }
-        .badge-revisi { color: #dc2626; font-weight: bold; }
+        .badge-ditolak { color: #dc2626; font-weight: bold; }
         .badge-pending { color: #d97706; font-weight: bold; }
         
         .signature-table { width: 100%; margin-top: 30px; border-collapse: collapse; page-break-inside: avoid; }
@@ -84,7 +84,7 @@
             <tr>
                 <th width="25%">TOTAL LAPORAN</th>
                 <th width="25%">DISETUJUI (ACC)</th>
-                <th width="25%">REVISI</th>
+                <th width="25%">DITOLAK</th>
                 <th width="25%">MENUNGGU</th>
             </tr>
         </thead>
@@ -92,7 +92,7 @@
             <tr>
                 <td style="text-align: center; font-weight: bold;">{{ $totalLaporan }}</td>
                 <td style="text-align: center; font-weight: bold; color: #059669;">{{ $laporanAcc }}</td>
-                <td style="text-align: center; font-weight: bold; color: #dc2626;">{{ $laporanRevisi }}</td>
+                <td style="text-align: center; font-weight: bold; color: #dc2626;">{{ $laporanDitolak ?? $laporanRevisi }}</td>
                 <td style="text-align: center; font-weight: bold; color: #d97706;">{{ $laporanPending }}</td>
             </tr>
         </tbody>
@@ -122,8 +122,8 @@
                     <td style="text-align: center;">
                         @if(in_array(strtolower($item->status_validasi), ['disetujui', 'acc']))
                             <span class="badge-acc">Disetujui</span>
-                        @elseif(in_array(strtolower($item->status_validasi), ['direvisi', 'ditolak', 'revisi']))
-                            <span class="badge-revisi">Revisi</span>
+                        @elseif(in_array(strtolower($item->status_validasi), ['ditolak', 'rejected', 'direvisi', 'revisi']))
+                            <span class="badge-ditolak">Ditolak</span>
                         @else
                             <span class="badge-pending">Pending</span>
                         @endif
@@ -167,7 +167,7 @@
     </table>
 
     <div class="footer">
-        Tanggal Cetak: {{ date('d-m-Y H:i:s') }} | SiPADU - Sistem Informasi Pelaporan Kinerja PJLP Dinas KPKP
+        Tanggal Cetak: {{ date('d-m-Y H:i:s') }} | SI-PEKA - Sistem Informasi Pelaporan Kinerja PJLP Dinas KPKP
     </div>
 
 </body>

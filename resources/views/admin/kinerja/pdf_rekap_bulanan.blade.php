@@ -58,7 +58,7 @@
                 <th width="22%">Jabatan / Lokasi Tugas</th>
                 <th width="9%">Total Laporan</th>
                 <th width="9%">Disetujui (ACC)</th>
-                <th width="9%">Revisi</th>
+                <th width="9%">Ditolak</th>
                 <th width="9%">Menunggu</th>
                 <th width="12%">Nilai Perilaku</th>
             </tr>

@@ -50,7 +50,7 @@
                                 <option value="belum_kirim" {{ ($statusValidasi ?? request('status_validasi')) === 'belum_kirim' ? 'selected' : '' }}>Belum Mengirim Laporan</option>
                                 <option value="pending" {{ ($statusValidasi ?? request('status_validasi')) === 'pending' ? 'selected' : '' }}>Pending (Menunggu)</option>
                                 <option value="disetujui" {{ ($statusValidasi ?? request('status_validasi')) === 'disetujui' ? 'selected' : '' }}>Disetujui</option>
-                                <option value="direvisi" {{ ($statusValidasi ?? request('status_validasi')) === 'direvisi' ? 'selected' : '' }}>Direvisi</option>
+                                <option value="ditolak" {{ in_array(($statusValidasi ?? request('status_validasi')), ['ditolak', 'direvisi']) ? 'selected' : '' }}>Ditolak</option>
                             </select>
                         </div>
 
@@ -145,7 +145,7 @@
                                 <th class="p-3">Jabatan / Lokasi Tugas</th>
                                 <th class="p-3 text-center">Total Lap.</th>
                                 <th class="p-3 text-center text-emerald-600">Disetujui</th>
-                                <th class="p-3 text-center text-rose-600">Revisi</th>
+                                <th class="p-3 text-center text-rose-600">Ditolak</th>
                                 <th class="p-3 text-center text-amber-600">Menunggu</th>
                                 <th class="p-3 text-center">Perilaku</th>
                                 <th class="p-3 text-center">Aksi</th>
@@ -253,7 +253,7 @@
                                         <p class="text-sm font-extrabold text-emerald-600">{{ $row['laporan_acc'] }}</p>
                                     </div>
                                     <div class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm text-center">
-                                        <p class="text-[9px] text-gray-500 font-bold mb-1">Revisi</p>
+                                        <p class="text-[9px] text-rose-600 font-bold mb-1">Ditolak</p>
                                         <p class="text-sm font-extrabold text-rose-600">{{ $row['laporan_ditolak'] }}</p>
                                     </div>
                                     <div class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm text-center bg-amber-50/50">
@@ -289,7 +289,7 @@
                     <span class="text-[9px] mt-1">Absensi</span>
                 </a>
                 <a href="{{ route('admin.kinerja.rekap') }}" class="flex flex-col items-center {{ request()->routeIs('admin.kinerja.*') ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-800' }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <span class="text-[9px] mt-1">Kinerja</span>
                 </a>
                 <a href="{{ route('admin.penilaian.rekap') }}" class="flex flex-col items-center {{ request()->routeIs('admin.penilaian.*') ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-800' }}">

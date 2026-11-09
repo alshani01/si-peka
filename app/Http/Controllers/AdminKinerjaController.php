@@ -49,9 +49,14 @@ class AdminKinerjaController extends Controller
                     }
                 });
             } else {
-                // Filter pegawai yang memilki laporan dengan status_validasi spesifik (pending, disetujui, direvisi)
+                // Filter pegawai yang memiliki laporan dengan status_validasi spesifik (pending, disetujui, ditolak)
                 $query->whereHas('laporanKinerjas', function ($q) use ($tipeFilter, $tanggal, $bulan, $tahun, $statusValidasi) {
-                    $q->where('status_validasi', $statusValidasi);
+                    if ($statusValidasi === 'ditolak') {
+                        $q->whereIn('status_validasi', ['ditolak', 'direvisi']);
+                    } else {
+                        $q->where('status_validasi', $statusValidasi);
+                    }
+
                     if ($tipeFilter === 'harian') {
                         $q->whereDate('tanggal_tugas', $tanggal);
                     } else {
@@ -92,7 +97,11 @@ class AdminKinerjaController extends Controller
 
         $filteredLaporans = $allLaporans;
         if (filled($statusValidasi) && $statusValidasi !== 'belum_kirim') {
-            $filteredLaporans = $allLaporans->where('status_validasi', $statusValidasi);
+            if ($statusValidasi === 'ditolak') {
+                $filteredLaporans = $allLaporans->whereIn('status_validasi', ['ditolak', 'direvisi']);
+            } else {
+                $filteredLaporans = $allLaporans->where('status_validasi', $statusValidasi);
+            }
         }
 
         return [
@@ -103,7 +112,7 @@ class AdminKinerjaController extends Controller
             'lokasi_tugas' => $pegawai->lokasi_tugas ?? '-',
             'total_laporan' => $statusValidasi === 'belum_kirim' ? 0 : $filteredLaporans->count(),
             'laporan_acc' => $allLaporans->where('status_validasi', 'disetujui')->count(),
-            'laporan_ditolak' => $allLaporans->where('status_validasi', 'direvisi')->count(),
+            'laporan_ditolak' => $allLaporans->whereIn('status_validasi', ['ditolak', 'direvisi'])->count(),
             'laporan_pending' => $allLaporans->where('status_validasi', 'pending')->count(),
             'nilai_perilaku' => $pegawai->nilai_perilaku ?? 0,
             'detail_kegiatan' => $filteredLaporans, 
@@ -153,12 +162,16 @@ class AdminKinerjaController extends Controller
             $laporansQuery->whereDate('tanggal_tugas', $tanggal);
         } else {
             $laporansQuery->whereMonth('tanggal_tugas', $bulan)
-                         ->whereYear('tanggal_tugas', $tahun);
+                          ->whereYear('tanggal_tugas', $tahun);
         }
 
         // Filter status validasi pada halaman detail jika ada
         if (filled($statusValidasi)) {
-            $laporansQuery->where('status_validasi', $statusValidasi);
+            if ($statusValidasi === 'ditolak') {
+                $laporansQuery->whereIn('status_validasi', ['ditolak', 'direvisi']);
+            } else {
+                $laporansQuery->where('status_validasi', $statusValidasi);
+            }
         }
 
         // Ambil laporan dan kelompokkan berdasarkan tanggal_tugas

@@ -260,10 +260,10 @@
                                                                                     class="px-3 py-1.5 bg-yellow-500 text-white rounded-xl text-xs font-bold hover:bg-yellow-600 transition">
                                                                                 Tinjau Laporan
                                                                             </button>
-                                                                        @elseif($subItem->status_validasi == 'disetujui')
-                                                                            <span class="px-2.5 py-1 text-[11px] font-bold uppercase rounded-full bg-green-100 text-green-800">Disetujui</span>
+                                                                        @elseif($subItem->status_validasi == 'disetujui' || $subItem->status_validasi == 'acc')
+                                                                            <span class="px-2.5 py-1 text-[11px] font-bold uppercase rounded-full bg-emerald-100 text-emerald-800">Disetujui</span>
                                                                         @else
-                                                                            <span class="px-2.5 py-1 text-[11px] font-bold uppercase rounded-full bg-red-100 text-red-800">Direvisi</span>
+                                                                            <span class="px-2.5 py-1 text-[11px] font-bold uppercase rounded-full bg-rose-100 text-rose-800">Ditolak</span>
                                                                         @endif
                                                                     </div>
                                                                 </div>
@@ -271,8 +271,8 @@
                                                                 <p class="text-xs sm:text-sm text-gray-700 leading-relaxed">{{ $subItem->uraian_tugas }}</p>
 
                                                                 @if($subItem->catatan_atasan)
-                                                                    <div class="p-2.5 bg-blue-50 border-l-2 border-blue-400 rounded-r-lg text-xs text-blue-700 mt-2">
-                                                                        <strong>Catatan Revisi:</strong> {{ $subItem->catatan_atasan }}
+                                                                    <div class="p-2.5 bg-rose-50 border-l-2 border-rose-400 rounded-r-lg text-xs text-rose-800 mt-2">
+                                                                        <strong>Catatan Atasan:</strong> {{ $subItem->catatan_atasan }}
                                                                     </div>
                                                                 @endif
                                                             </div>
@@ -350,12 +350,12 @@
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Keputusan Atasan</label>
                             <select name="status_validasi" class="w-full border-gray-300 rounded-xl text-sm p-3" required>
                                 <option value="disetujui">Setujui Laporan</option>
-                                <option value="direvisi">Tolak / Minta Revisi</option>
+                                <option value="ditolak">Tolak Laporan</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Atasan (Wajib Jika Direvisi)</label>
-                            <textarea name="catatan_atasan" rows="3" class="w-full border-gray-300 rounded-xl text-sm p-3" placeholder="Contoh: Uraian tugas mohon diperjelas..."></textarea>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Atasan (Wajib Jika Ditolak)</label>
+                            <textarea name="catatan_atasan" rows="3" class="w-full border-gray-300 rounded-xl text-sm p-3" placeholder="Contoh: Bukti lampiran tidak sesuai dengan uraian tugas..."></textarea>
                         </div>
                         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
                             <button type="button" @click="openModal = false" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-xl">Batal</button>

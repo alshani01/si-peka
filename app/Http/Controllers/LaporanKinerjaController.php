@@ -256,14 +256,15 @@ class LaporanKinerjaController extends Controller
 
         $totalLaporan = $laporans->count();
         $laporanAcc = $laporans->whereIn('status_validasi', ['disetujui', 'acc'])->count();
-        $laporanRevisi = $laporans->whereIn('status_validasi', ['direvisi', 'ditolak', 'revisi'])->count();
+        $laporanDitolak = $laporans->whereIn('status_validasi', ['ditolak', 'rejected'])->count();
+        $laporanRevisi = $laporanDitolak; // Tetap dikirim demi kompatibilitas jika template PDF masih memanggil variabel ini
         $laporanPending = $laporans->where('status_validasi', 'pending')->count();
 
         $namaBulan = Carbon::createFromDate($tahun, $bulan, 1)->locale('id')->translatedFormat('F');
 
         $pdf = Pdf::loadView('pjlp.laporan.pdf', compact(
             'user', 'laporans', 'bulan', 'tahun', 'namaBulan',
-            'totalLaporan', 'laporanAcc', 'laporanRevisi', 'laporanPending'
+            'totalLaporan', 'laporanAcc', 'laporanDitolak', 'laporanRevisi', 'laporanPending'
         ))->setPaper('a4', 'portrait');
 
         return $pdf->download("Laporan_Kinerja_PJLP_{$user->id_pjlp}_{$bulan}_{$tahun}.pdf");
