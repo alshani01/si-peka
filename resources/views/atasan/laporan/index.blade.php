@@ -16,8 +16,8 @@
         $countLaporanPending = \App\Models\LaporanKinerja::whereHas('user', fn($q) => $q->where('atasan_id', $atasanId))->where('status_validasi', 'pending')->count();
         $countAbsensiPending = \App\Models\Absensi::whereHas('user', fn($q) => $q->where('atasan_id', $atasanId))->where('status_klarifikasi', 'pending')->count();
         $countCutiPending = \App\Models\Cuti::whereHas('user', fn($q) => $q->where('atasan_id', $atasanId))->where('status_validasi', 'pending')->count();
-        
-        $countPenilaianPending = class_exists(\App\Models\PenilaianPerilaku::class) 
+
+        $countPenilaianPending = class_exists(\App\Models\PenilaianPerilaku::class)
             ? \App\Models\User::where('atasan_id', $atasanId)
                 ->whereDoesntHave('penilaianPerilaku', fn($q) => $q->where('bulan', $bulanIni)->where('tahun', $tahunIni))
                 ->count()
@@ -26,7 +26,7 @@
 
     <div id="wrapper-laporan" x-data="laporanAtasanData({{ json_encode($allPendingIds ?? []) }})" class="py-6 md:py-12 pb-28 md:pb-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            
+
             @if (session('success'))
                 <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-xl shadow-sm flex items-center gap-3">
                     <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -79,20 +79,28 @@
             <form id="formBulkValidasi" action="{{ route('atasan.laporan.bulkValidasi') }}" method="POST">
                 @csrf
                 <div id="area-tabel-laporan" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-opacity duration-200">
-                    
+
                     <!-- HEADER & FILTER -->
                     <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <h3 class="font-bold text-gray-800 text-sm md:text-base">Daftar Laporan Kinerja Pegawai</h3>
                             <p class="text-xs text-gray-500">Filter data berdasarkan pegawai, periode bulan, dan tahun.</p>
                         </div>
-                        
+
                         <div id="form-filter-atasan" class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                             <!-- Input Search -->
                             <div class="relative w-full sm:w-48">
                                 <input type="text" id="filter_search" name="search" value="{{ $search }}" placeholder="Cari nama pegawai, laporan..." class="border-gray-300 rounded-xl text-xs p-2.5 pl-8 w-full focus:ring-blue-500 focus:border-blue-500">
                                 <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             </div>
+
+                            <!-- Filter Status Validasi -->
+                            <select id="filter_status" name="status_validasi" class="border-gray-300 rounded-xl text-xs p-2.5 w-full sm:w-40 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="all" {{ ($statusValidasi ?? 'all') == 'all' ? 'selected' : '' }}>-- Semua Status --</option>
+                                <option value="pending" {{ ($statusValidasi ?? '') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="disetujui" {{ ($statusValidasi ?? '') == 'disetujui' ? 'selected' : '' }}>Disetujui</option>
+                                <option value="ditolak" {{ ($statusValidasi ?? '') == 'ditolak' ? 'selected' : '' }}>Ditolak</option>
+                            </select>
 
                             <select id="filter_pegawai" name="pegawai_id" class="border-gray-300 rounded-xl text-xs p-2.5 w-full sm:w-44 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="all" {{ $pegawaiId == 'all' ? 'selected' : '' }}>-- Semua Pegawai --</option>
@@ -153,15 +161,15 @@
                                         $tanggalTugas = $groupData['tanggal_tugas'];
                                         $infoAbsensi = $groupData['info_absensi'];
                                         $formattedDate = \Carbon\Carbon::parse($tanggalTugas)->translatedFormat('d M Y');
-                                        
+
                                         $groupPendingIds = $items->where('status_validasi', 'pending')->pluck('id')->map(fn($id) => (string)$id)->toArray();
                                     @endphp
-                                    
+
                                     <!-- PARENT ROW -->
                                     <tr class="hover:bg-blue-50/50 transition cursor-pointer {{ $infoAbsensi ? 'bg-amber-50/30' : '' }}" @click="toggleGroup('{{ $groupKey }}')">
                                         <td class="p-3 text-center align-middle" @click.stop>
                                             @if(!empty($groupPendingIds))
-                                                <input type="checkbox" 
+                                                <input type="checkbox"
                                                        value="{{ $groupKey }}"
                                                        @change="toggleGroupCheckbox('{{ $groupKey }}', {{ json_encode($groupPendingIds) }})"
                                                        :checked="isGroupChecked('{{ json_encode($groupPendingIds) }}')"
@@ -236,6 +244,8 @@
                                                         @foreach($items as $subItem)
                                                             @php
                                                                 $jamInput = \Carbon\Carbon::parse($subItem->created_at)->format('H.i');
+                                                                // Deteksi laporan susulan jika tanggal input dibuat setelah tanggal tugasnya
+                                                                $isSusulan = \Carbon\Carbon::parse($subItem->created_at)->toDateString() > \Carbon\Carbon::parse($subItem->tanggal_tugas)->toDateString();
                                                             @endphp
                                                             <div class="p-3.5 rounded-xl border bg-gray-50 border-gray-200/80 space-y-2">
                                                                 <div class="flex items-start justify-between gap-2">
@@ -244,20 +254,29 @@
                                                                             <input type="checkbox" name="laporan_ids[]" value="{{ (string)$subItem->id }}" x-model="selectedIds" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer mt-0.5">
                                                                         @endif
                                                                         <div>
-                                                                            <span class="text-[11px] font-bold text-gray-400">🕒 {{ $jamInput }} WIB</span>
+                                                                            <div class="flex items-center gap-2">
+                                                                                <span class="text-[11px] font-bold text-gray-400">🕒 {{ $jamInput }} WIB</span>
+
+                                                                                <!-- BADGE INDIKATOR LAPORAN SUSULAN -->
+                                                                                @if($isSusulan)
+                                                                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-extrabold rounded-full border border-amber-300 flex items-center gap-1">
+                                                                                        ⚡ Laporan Susulan
+                                                                                    </span>
+                                                                                @endif
+                                                                            </div>
                                                                             <h5 class="font-bold text-xs sm:text-sm text-blue-800 mt-0.5">{{ $subItem->aktivitas_kinerja }}</h5>
                                                                         </div>
                                                                     </div>
 
                                                                     <div>
                                                                         @if($subItem->status_validasi == 'pending')
-                                                                            <button type="button" 
-                                                                                    @click="openModal = true; modalData = {
-                                                                                        nama: '{{ addslashes($subItem->user->name) }}',
-                                                                                        file_bukti: '{{ $subItem->file_bukti ? asset('storage/' . $subItem->file_bukti) : '' }}',
-                                                                                        actionUrl: '{{ route('atasan.validasi', $subItem->id) }}'
-                                                                                    }" 
-                                                                                    class="px-3 py-1.5 bg-yellow-500 text-white rounded-xl text-xs font-bold hover:bg-yellow-600 transition">
+                                                                            <button type="button"
+                                                                                @click="openModal = true; modalData = {
+                                                                                    nama: '{{ addslashes($subItem->user->name) }}',
+                                                                                    file_bukti: '{{ $subItem->file_bukti ? asset('storage/' . $subItem->file_bukti) : '' }}',
+                                                                                    actionUrl: '{{ route('atasan.validasi', $subItem->id) }}'
+                                                                                }"
+                                                                                class="px-3 py-1.5 bg-yellow-500 text-white rounded-xl text-xs font-bold hover:bg-yellow-600 transition">
                                                                                 Tinjau Laporan
                                                                             </button>
                                                                         @elseif($subItem->status_validasi == 'disetujui' || $subItem->status_validasi == 'acc')
@@ -323,7 +342,7 @@
             <!-- MODAL GLOBAL LAPORAN -->
             <div x-show="openModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4" style="display: none;">
                 <div x-show="openModal" x-transition.opacity class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="openModal = false"></div>
-                
+
                 <div x-show="openModal" x-transition class="relative bg-white rounded-2xl p-6 max-w-md w-full text-left shadow-2xl z-10">
                     <button type="button" @click="openModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -331,7 +350,7 @@
 
                     <h3 class="text-base font-bold text-gray-800 mb-1">Tinjau Laporan Kinerja</h3>
                     <p class="text-xs text-gray-500 mb-4">Pegawai: <strong class="text-gray-800" x-text="modalData.nama"></strong></p>
-                    
+
                     <div class="mb-4 text-xs text-gray-700 bg-gray-50 p-3 rounded-xl border border-gray-100">
                         <p class="font-semibold text-gray-600">Bukti Lampiran:</p>
                         <template x-if="modalData.file_bukti">
@@ -411,7 +430,7 @@
     <!-- Script SweetAlert2 & jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    
+
     <script>
         function konfirmasiBulkSubmit() {
             Swal.fire({
@@ -503,14 +522,15 @@
 
             function triggerFilter() {
                 let search = $('#filter_search').val();
+                let status = $('#filter_status').val();
                 let pegawai = $('#filter_pegawai').val();
                 let bulan = $('#filter_bulan').val();
                 let tahun = $('#filter_tahun').val();
-                let targetUrl = "{{ route('atasan.laporan.index') }}?pegawai_id=" + pegawai + "&bulan=" + bulan + "&tahun=" + tahun + "&search=" + encodeURIComponent(search);
+                let targetUrl = "{{ route('atasan.laporan.index') }}?status_validasi=" + status + "&pegawai_id=" + pegawai + "&bulan=" + bulan + "&tahun=" + tahun + "&search=" + encodeURIComponent(search);
                 loadRiwayatAjax(targetUrl);
             }
 
-            $(document).on('change', '#filter_pegawai, #filter_bulan, #filter_tahun', function() {
+            $(document).on('change', '#filter_status, #filter_pegawai, #filter_bulan, #filter_tahun', function() {
                 triggerFilter();
             });
 
@@ -531,4 +551,5 @@
             });
         });
     </script>
+
 </x-app-layout>

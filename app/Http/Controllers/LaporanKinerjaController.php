@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LaporanKinerja;
 use App\Models\Absensi;
 use App\Models\Cuti;
+use App\Models\PengajuanBukaKunci; // Import Model PengajuanBukaKunci
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -72,7 +73,6 @@ class LaporanKinerjaController extends Controller
                 'Penanganan kasus kesehatan hewan',
                 'Pelaporan kegiatan teknis kesehatan hewan',
                 'Membantu tupoksi Suku Dinas Lainnya',
-
             ],
             'Pendamping Jakpreneur' => [
                 'Pendampingan pelaku usaha',
@@ -102,6 +102,7 @@ class LaporanKinerjaController extends Controller
 
         $bulan = sprintf('%02d', (int) $request->input('bulan', Carbon::now('Asia/Jakarta')->format('m')));
         $tahun = (int) $request->input('tahun', Carbon::now('Asia/Jakarta')->format('Y'));
+        $statusValidasi = $request->input('status_validasi', 'all');
 
         $masterAktivitas = $this->getDaftarAktivitas();
         $jenisPekerjaanUser = $user->jenis_pekerjaan ?? 'Petugas Pendamping Jakpreneur';
@@ -123,20 +124,35 @@ class LaporanKinerjaController extends Controller
 
         $listAktivitas = $masterAktivitas[$keyAktivitas] ?? $masterAktivitas['Pendamping Jakpreneur'];
 
+        // Ambil Pengajuan Buka Kunci yang Disetujui Admin & Masih Berlaku
+        $pengajuanBukaKunciDisetujui = PengajuanBukaKunci::where('user_id', $user->id)
+            ->where('status', 'disetujui')
+            ->whereNotNull('expired_at')
+            ->where('expired_at', '>=', Carbon::now('Asia/Jakarta'))
+            ->orderBy('tanggal_terlewat', 'desc')
+            ->get();
+
         $datesLaporan = LaporanKinerja::where('user_id', $user->id)
             ->whereMonth('tanggal_tugas', $bulan)
             ->whereYear('tanggal_tugas', $tahun)
+            ->when($statusValidasi !== 'all', function ($q) use ($statusValidasi) {
+                return $q->where('status_validasi', $statusValidasi);
+            })
             ->select('tanggal_tugas as tanggal')
             ->groupBy('tanggal_tugas')
             ->get();
 
-        $datesAbsensi = Absensi::where('user_id', $user->id)
-            ->whereIn('status_kehadiran', ['cuti', 'sakit', 'izin', 'alpa'])
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->select('tanggal')
-            ->groupBy('tanggal')
-            ->get();
+        if ($statusValidasi === 'ditolak') {
+            $datesAbsensi = collect();
+        } else {
+            $datesAbsensi = Absensi::where('user_id', $user->id)
+                ->whereIn('status_kehadiran', ['cuti', 'sakit', 'izin', 'alpa'])
+                ->whereMonth('tanggal', $bulan)
+                ->whereYear('tanggal', $tahun)
+                ->select('tanggal')
+                ->groupBy('tanggal')
+                ->get();
+        }
 
         $allDatesCombined = $datesLaporan->concat($datesAbsensi)
             ->pluck('tanggal')
@@ -160,7 +176,8 @@ class LaporanKinerjaController extends Controller
             ]
         );
 
-        $riwayatGrouped = LaporanKinerja::where('user_id', $user->id)
+        $riwayatGrouped = LaporanKinerja::with('pengajuanBukaKunci')
+            ->where('user_id', $user->id)
             ->whereIn('tanggal_tugas', $currentDateItems->toArray())
             ->orderBy('tanggal_tugas', 'asc')
             ->orderBy('created_at', 'asc')
@@ -177,13 +194,90 @@ class LaporanKinerjaController extends Controller
                 return Carbon::parse($item->tanggal)->format('Y-m-d');
             });
 
-        return view('pjlp.laporan.create', compact('riwayatGrouped', 'infoAbsensi', 'laporanPaginated', 'bulan', 'tahun', 'listAktivitas', 'jenisPekerjaanUser'));
+        return view('pjlp.laporan.create', compact(
+            'riwayatGrouped',
+            'infoAbsensi',
+            'laporanPaginated',
+            'bulan',
+            'tahun',
+            'listAktivitas',
+            'jenisPekerjaanUser',
+            'statusValidasi',
+            'pengajuanBukaKunciDisetujui'
+        ));
+    }
+
+    /**
+     * Menyimpan Pengajuan Buka Kunci Laporan Terkunci ke Admin
+     */
+    public function storeBukaKunci(Request $request)
+    {
+        $request->validate([
+            'tanggal_pengajuan' => 'required|date|before_or_equal:today',
+            'alasan'            => 'required|string|max:1000',
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->role !== 'pjlp') {
+            abort(403, 'Hanya personil operasional yang dapat melakukan pengajuan.');
+        }
+
+        $tanggalPengajuan = $request->tanggal_pengajuan;
+
+        // 1. Cek apakah user sedang Cuti (berdasarkan tabel Cuti yang disetujui)
+        $sedangCuti = Cuti::where('user_id', $user->id)
+            ->where('status_validasi', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $tanggalPengajuan)
+            ->whereDate('tanggal_selesai', '>=', $tanggalPengajuan)
+            ->exists();
+
+        if ($sedangCuti) {
+            return back()->withErrors([
+                'tanggal_pengajuan' => 'Pengajuan buka kunci ditolak. Anda tercatat sedang CUTI yang disetujui pada tanggal tersebut.'
+            ])->withInput();
+        }
+
+        // 2. Cek apakah ada record Absensi non-hadir (cuti, sakit, izin, alpa)
+        $cekAbsensi = Absensi::where('user_id', $user->id)
+            ->whereDate('tanggal', $tanggalPengajuan)
+            ->whereIn('status_kehadiran', ['cuti', 'sakit', 'izin', 'alpa'])
+            ->first();
+
+        if ($cekAbsensi) {
+            $statusAbsen = strtoupper($cekAbsensi->status_kehadiran);
+            return back()->withErrors([
+                'tanggal_pengajuan' => "Pengajuan buka kunci ditolak. Status absensi Anda pada tanggal tersebut adalah {$statusAbsen}."
+            ])->withInput();
+        }
+
+        // 3. Cek jika sudah ada pengajuan pending untuk tanggal yang sama
+        $existsPending = PengajuanBukaKunci::where('user_id', $user->id)
+            ->whereDate('tanggal_terlewat', $tanggalPengajuan)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($existsPending) {
+            return back()->withErrors([
+                'tanggal_pengajuan' => 'Pengajuan buka kunci untuk tanggal ini sudah pernah dikirim dan masih menunggu persetujuan Admin.'
+            ])->withInput();
+        }
+
+        // Simpan pengajuan jika lolos semua validasi
+        PengajuanBukaKunci::create([
+            'user_id'          => $user->id,
+            'tanggal_terlewat' => $tanggalPengajuan,
+            'alasan'           => $request->alasan,
+            'status'           => 'pending',
+        ]);
+
+        return back()->with('success', 'Pengajuan buka kunci berhasil dikirim ke Admin. Silakan menunggu persetujuan.');
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'tanggal_tugas'     => 'required|date',
+            'tanggal_tugas'     => 'required|date|before_or_equal:' . Carbon::now('Asia/Jakarta')->toDateString(),
             'aktivitas_kinerja' => 'required|string',
             'uraian_tugas'      => 'required|string',
             'file_bukti'        => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
@@ -192,17 +286,31 @@ class LaporanKinerjaController extends Controller
         $user = auth()->user();
         $today = Carbon::now('Asia/Jakarta')->format('Y-m-d');
         $jamSekarang = Carbon::now('Asia/Jakarta')->format('H:i');
+        $pengajuanBukaKunciId = null;
 
-        if ($request->tanggal_tugas !== $today) {
-            return back()->withErrors([
-                'tanggal_tugas' => 'Laporan kinerja harian hanya dapat diisi untuk hari berjalan (hari ini).'
-            ])->withInput();
-        }
+        // Cek Logika Pengisian (Hari Ini vs Susulan)
+        if ($request->tanggal_tugas === $today) {
+            if ($jamSekarang < '06:00' || $jamSekarang > '18:00') {
+                return back()->withErrors([
+                    'tanggal_tugas' => 'Pengisian laporan harian reguler ditutup. Form hanya dapat diisi antara pukul 06:00 WIB sampai 18:00 WIB.'
+                ])->withInput();
+            }
+        } else {
+            // Pengisian Tanggal Susulan (Harus ada ACC Admin yang aktif)
+            $pengajuanBukaKunci = PengajuanBukaKunci::where('user_id', $user->id)
+                ->whereDate('tanggal_terlewat', $request->tanggal_tugas)
+                ->where('status', 'disetujui')
+                ->whereNotNull('expired_at')
+                ->where('expired_at', '>=', Carbon::now('Asia/Jakarta'))
+                ->first();
 
-        if ($jamSekarang < '06:00' || $jamSekarang > '18:00') {
-            return back()->withErrors([
-                'tanggal_tugas' => 'Pengisian laporan harian ditutup. Form hanya dapat diisi antara pukul 06:00 WIB sampai 18:00 WIB.'
-            ])->withInput();
+            if (!$pengajuanBukaKunci) {
+                return back()->withErrors([
+                    'tanggal_tugas' => 'Tanggal tugas tersebut terkunci. Silakan ajukan buka kunci terlebih dahulu dan tunggu persetujuan Admin.'
+                ])->withInput();
+            }
+
+            $pengajuanBukaKunciId = $pengajuanBukaKunci->id;
         }
 
         $sedangCuti = Cuti::where('user_id', $user->id)
@@ -223,12 +331,13 @@ class LaporanKinerjaController extends Controller
         }
 
         LaporanKinerja::create([
-            'user_id'           => $user->id,
-            'tanggal_tugas'     => $request->tanggal_tugas,
-            'aktivitas_kinerja' => $request->aktivitas_kinerja,
-            'uraian_tugas'      => $request->uraian_tugas,
-            'file_bukti'        => $filePath,
-            'status_validasi'   => 'pending',
+            'user_id'                 => $user->id,
+            'pengajuan_buka_kunci_id' => $pengajuanBukaKunciId,
+            'tanggal_tugas'           => $request->tanggal_tugas,
+            'aktivitas_kinerja'       => $request->aktivitas_kinerja,
+            'uraian_tugas'            => $request->uraian_tugas,
+            'file_bukti'              => $filePath,
+            'status_validasi'         => 'pending',
         ]);
 
         return redirect()->route('pjlp.laporan.create')->with('success', 'Aktivitas kinerja berhasil ditambahkan.');
@@ -257,7 +366,7 @@ class LaporanKinerjaController extends Controller
         $totalLaporan = $laporans->count();
         $laporanAcc = $laporans->whereIn('status_validasi', ['disetujui', 'acc'])->count();
         $laporanDitolak = $laporans->whereIn('status_validasi', ['ditolak', 'rejected'])->count();
-        $laporanRevisi = $laporanDitolak; // Tetap dikirim demi kompatibilitas jika template PDF masih memanggil variabel ini
+        $laporanRevisi = $laporanDitolak;
         $laporanPending = $laporans->where('status_validasi', 'pending')->count();
 
         $namaBulan = Carbon::createFromDate($tahun, $bulan, 1)->locale('id')->translatedFormat('F');

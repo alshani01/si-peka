@@ -1,7 +1,96 @@
+@php
+    $user = Auth::user();
+    if ($user) {
+        $bulanIni = date('m');
+        $tahunIni = date('Y');
+
+        if ($user->role === 'pjlp') {
+            // Hitung Pengajuan Buka Kunci yang di-ACC Admin & belum expired (berdasarkan bulan berjalan / tanggal terkait)
+            $bukaKunciDisetujuiCount = \App\Models\PengajuanBukaKunci::where('user_id', $user->id)
+                ->where('status', 'disetujui')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->whereNotNull('expired_at')
+                ->where('expired_at', '>=', \Carbon\Carbon::now('Asia/Jakarta'))
+                ->count();
+
+            $pendingLaporanCount = \App\Models\LaporanKinerja::where('user_id', $user->id)
+                ->where('status_validasi', 'ditolak')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingAbsensiCount = \App\Models\Absensi::where('user_id', $user->id)
+                ->where('status_klarifikasi', 'ditolak')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingCutiCount = \App\Models\Cuti::where('user_id', $user->id)
+                ->where('status_validasi', 'ditolak')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            // Total Notifikasi PJLP Bulan Ini
+            $totalNotificationCount = $pendingLaporanCount + $pendingAbsensiCount + $pendingCutiCount + $bukaKunciDisetujuiCount;
+        } elseif ($user->role === 'admin') {
+            $pendingLaporanCount = \App\Models\LaporanKinerja::where('status_validasi', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingAbsensiCount = \App\Models\Absensi::where('status_klarifikasi', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingCutiCount = \App\Models\Cuti::where('status_validasi', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingBukaKunciCount = \App\Models\PengajuanBukaKunci::where('status', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $totalNotificationCount = $pendingLaporanCount + $pendingAbsensiCount + $pendingCutiCount + $pendingBukaKunciCount;
+        } elseif ($user->role === 'atasan') {
+            $bawahanQuery = function($q) use ($user) {
+                $q->where('atasan_id', $user->id);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'id_atasan')) {
+                    $q->orWhere('id_atasan', $user->id);
+                }
+            };
+
+            $pendingLaporanCount = \App\Models\LaporanKinerja::whereHas('user', $bawahanQuery)
+                ->where('status_validasi', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingAbsensiCount = \App\Models\Absensi::whereHas('user', $bawahanQuery)
+                ->where('status_klarifikasi', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $pendingCutiCount = \App\Models\Cuti::whereHas('user', $bawahanQuery)
+                ->where('status_validasi', 'pending')
+                ->whereMonth('created_at', $bulanIni)
+                ->whereYear('created_at', $tahunIni)
+                ->count();
+
+            $totalNotificationCount = $pendingLaporanCount + $pendingAbsensiCount + $pendingCutiCount;
+        }
+    }
+@endphp
+
 <nav x-data="{ open: false, openNotif: false }" class="bg-white/95 backdrop-blur-md border-b border-gray-200/80 shadow-sm sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-            
+
             <!-- SISI KIRI: Logo Aplikasi + Breadcrumb Dinamis -->
             <div class="flex items-center space-x-3">
                 <div class="shrink-0 flex items-center">
@@ -10,7 +99,6 @@
                     </a>
                 </div>
 
-                <!-- Pembatas Garis Tipis (Desktop Only) -->
                 <div class="hidden sm:block h-5 w-px bg-gray-200"></div>
 
                 <!-- BREADCRUMB DINAMIS (DESKTOP) -->
@@ -19,7 +107,7 @@
                         {{ strtoupper(Auth::user()->role) }}
                     </span>
                     <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    
+
                     <span class="text-gray-900 font-bold">
                         @if(Auth::user()->role === 'admin')
                             @if(request()->routeIs('admin.pegawai.*')) Manajemen Pegawai
@@ -45,14 +133,13 @@
 
             <!-- SISI KANAN: Lonceng Notifikasi & Profile Dropdown -->
             <div class="flex items-center space-x-2 sm:space-x-3">
-                
-                <!-- 1. IKON LONCENG NOTIFIKASI (PENDING TASKS) -->
+
+                <!-- 1. IKON LONCENG NOTIFIKASI -->
                 <div class="relative" @click.outside="openNotif = false">
-                    <button @click="openNotif = !openNotif" 
+                    <button @click="openNotif = !openNotif"
                         class="relative p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50/80 border border-gray-200/80 focus:outline-none transition shadow-sm">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                        
-                        <!-- BADGE INDIKATOR MERAH -->
+
                         @if(($totalNotificationCount ?? 0) > 0)
                             <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-extrabold text-white ring-2 ring-white animate-pulse">
                                 {{ $totalNotificationCount > 9 ? '9+' : $totalNotificationCount }}
@@ -61,11 +148,11 @@
                     </button>
 
                     <!-- DROPDOWN POPUP NOTIFIKASI -->
-                    <div x-show="openNotif" x-cloak x-transition.origin.top.right 
+                    <div x-show="openNotif" x-cloak x-transition.origin.top.right
                         class="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden">
-                        
+
                         <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
-                            <span class="text-xs font-bold text-gray-800">Notifikasi & Pending</span>
+                            <span class="text-xs font-bold text-gray-800">Notifikasi Bulan Ini</span>
                             <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-100 text-blue-700">
                                 {{ $totalNotificationCount ?? 0 }} Total
                             </span>
@@ -73,7 +160,8 @@
 
                         <div class="divide-y divide-gray-100 text-xs max-h-64 overflow-y-auto">
                             @if(Auth::user()->role === 'atasan' || Auth::user()->role === 'admin')
-                                <a href="{{ Auth::user()->role === 'atasan' ? route('atasan.laporan.index') : route('admin.pegawai.index') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                <!-- LAPORAN KINERJA PENDING -->
+                                <a href="{{ Auth::user()->role === 'atasan' ? route('atasan.laporan.index', ['status_validasi' => 'pending']) : route('admin.kinerja.rekap', ['status_validasi' => 'pending']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
                                     <div class="p-2 rounded-xl bg-amber-100 text-amber-600 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     </div>
@@ -83,7 +171,8 @@
                                     </div>
                                 </a>
 
-                                <a href="{{ Auth::user()->role === 'atasan' ? route('atasan.absensi.index') : route('admin.absensi.rekap') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                <!-- KLARIFIKASI ABSEN PENDING -->
+                                <a href="{{ Auth::user()->role === 'atasan' ? route('atasan.absensi.index', ['status_klarifikasi' => 'pending']) : route('admin.absensi.rekap', ['status' => 'pending']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
                                     <div class="p-2 rounded-xl bg-rose-100 text-rose-600 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     </div>
@@ -93,7 +182,8 @@
                                     </div>
                                 </a>
 
-                                <a href="{{ Auth::user()->role === 'atasan' ? route('atasan.cuti.index') : route('admin.pegawai.index') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                <!-- PENGAJUAN CUTI PENDING -->
+                                <a href="{{ Auth::user()->role === 'atasan' ? route('atasan.cuti.index', ['status_validasi' => 'pending']) : route('admin.absensi.rekap', ['status' => 'pending', 'tipe' => 'cuti']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
                                     <div class="p-2 rounded-xl bg-purple-100 text-purple-600 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                     </div>
@@ -103,31 +193,32 @@
                                     </div>
                                 </a>
 
-                                @if(Auth::user()->role === 'atasan')
-                                    <a href="{{ route('atasan.penilaian.index') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
-                                        <div class="p-2 rounded-xl bg-blue-100 text-blue-600 flex-shrink-0">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                @if(Auth::user()->role === 'admin')
+                                    <a href="{{ route('admin.kinerja.rekap', ['tab' => 'buka_kunci']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                        <div class="p-2 rounded-xl bg-amber-100 text-amber-600 flex-shrink-0">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                         </div>
                                         <div class="flex-1">
-                                            <p class="font-bold text-gray-800">Penilaian Perilaku Pending</p>
-                                            <p class="text-gray-500 text-[11px] mt-0.5">{{ $pendingPenilaianCount ?? 0 }} pegawai belum dinilai bulan ini.</p>
+                                            <p class="font-bold text-gray-800">Pengajuan Buka Kunci</p>
+                                            <p class="text-gray-500 text-[11px] mt-0.5">{{ $pendingBukaKunciCount ?? 0 }} pengajuan perlu persetujuan Admin.</p>
                                         </div>
                                     </a>
                                 @endif
                             @else
-                                <a href="{{ route('pjlp.laporan.create') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                <!-- NOTIFIKASI PJLP -->
+                                <a href="{{ route('pjlp.laporan.create', ['status_validasi' => 'ditolak']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
                                     <div class="p-2 rounded-xl bg-amber-100 text-amber-600 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     </div>
                                     <div class="flex-1">
-                                        <p class="font-bold text-gray-800">Revisi Laporan Kinerja</p>
+                                        <p class="font-bold text-gray-800">Laporan Kinerja Ditolak</p>
                                         <p class="text-gray-500 text-[11px] mt-0.5">
-                                            {{ ($pendingLaporanCount ?? 0) > 0 ? $pendingLaporanCount . ' laporan ditolak / perlu revisi.' : 'Tidak ada laporan yang ditolak.' }}
+                                            {{ ($pendingLaporanCount ?? 0) > 0 ? $pendingLaporanCount . ' laporan ditolak.' : 'Tidak ada laporan yang ditolak.' }}
                                         </p>
                                     </div>
                                 </a>
 
-                                <a href="{{ route('pjlp.absensi.index') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                <a href="{{ route('pjlp.absensi.index', ['status_klarifikasi' => 'ditolak']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
                                     <div class="p-2 rounded-xl bg-rose-100 text-rose-600 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     </div>
@@ -139,7 +230,7 @@
                                     </div>
                                 </a>
 
-                                <a href="{{ route('pjlp.cuti.index') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
+                                <a href="{{ route('pjlp.cuti.index', ['status_validasi' => 'ditolak']) }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition">
                                     <div class="p-2 rounded-xl bg-purple-100 text-purple-600 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                     </div>
@@ -147,6 +238,29 @@
                                         <p class="font-bold text-gray-800">Pengajuan Cuti Ditolak</p>
                                         <p class="text-gray-500 text-[11px] mt-0.5">
                                             {{ ($pendingCutiCount ?? 0) > 0 ? $pendingCutiCount . ' pengajuan cuti ditolak.' : 'Tidak ada cuti yang ditolak.' }}
+                                        </p>
+                                    </div>
+                                </a>
+
+                                <a href="{{ route('pjlp.laporan.create') }}" class="p-3 flex items-start gap-3 hover:bg-gray-50 transition {{ ($bukaKunciDisetujuiCount ?? 0) > 0 ? 'bg-emerald-50/60' : '' }}">
+                                    <div class="p-2 rounded-xl {{ ($bukaKunciDisetujuiCount ?? 0) > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600' }} flex-shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <p class="font-bold text-gray-800">Buka Kunci Laporan</p>
+                                            @if(($bukaKunciDisetujuiCount ?? 0) > 0)
+                                                <span class="px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-600 text-white rounded-full">
+                                                    {{ $bukaKunciDisetujuiCount }} ACC
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <p class="text-gray-500 text-[11px] mt-0.5">
+                                            @if(($bukaKunciDisetujuiCount ?? 0) > 0)
+                                                <strong class="text-emerald-700">✨ {{ $bukaKunciDisetujuiCount }} tanggal susulan di-ACC Admin!</strong> Klik untuk langsung menginput laporan.
+                                            @else
+                                                Belum ada pengajuan di-ACC. Klik untuk ajukan susulan.
+                                            @endif
                                         </p>
                                     </div>
                                 </a>
@@ -170,20 +284,16 @@
                         </x-slot>
 
                         <x-slot name="content">
-                            <x-dropdown-link :href="route('profile.edit')">
-                                {{ __('Profile') }}
-                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('profile.edit')">{{ __('Profile') }}</x-dropdown-link>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
-                                    {{ __('Log Out') }}
-                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">{{ __('Log Out') }}</x-dropdown-link>
                             </form>
                         </x-slot>
                     </x-dropdown>
                 </div>
 
-                <!-- 3. HAMBURGER BUTTON (MOBILE SLIDE DRAWER) -->
+                <!-- 3. HAMBURGER BUTTON -->
                 <div class="-me-2 flex items-center sm:hidden">
                     <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 focus:outline-none transition border border-gray-200">
                         <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -198,7 +308,7 @@
         </div>
     </div>
 
-    <!-- RESPONSIVE MOBILE DRAWER (SLIDE DOWN) -->
+    <!-- RESPONSIVE MOBILE DRAWER -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden border-b border-gray-200 bg-white">
         <div class="pt-2 pb-3 space-y-1">
             @if(Auth::user()->role === 'admin')

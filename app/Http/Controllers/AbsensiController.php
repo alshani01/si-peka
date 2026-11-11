@@ -18,25 +18,34 @@ class AbsensiController extends Controller
         // Ambil filter bulan & tahun dari URL (default bulan & tahun saat ini)
         $bulan = $request->input('bulan', date('m'));
         $tahun = $request->input('tahun', date('Y'));
+        $statusKlarifikasi = $request->input('status_klarifikasi', 'all');
 
         // Ambil data absensi milik user sesuai periode bulan & tahun
         $riwayatAbsensi = Absensi::where('user_id', Auth::id())
                             ->whereMonth('tanggal', $bulan)
                             ->whereYear('tanggal', $tahun)
+                            ->when($statusKlarifikasi !== 'all', function($query) use ($statusKlarifikasi) {
+                                return $query->where('status_klarifikasi', $statusKlarifikasi);
+                            })
                             ->orderBy('tanggal', 'asc')
                             ->get();
 
-        // Hitung Ringkasan / Rekapitulasi Statistik Kehadiran pada Periode Tersebut
+        // Hitung Ringkasan / Rekapitulasi Statistik Kehadiran pada Periode Tersebut (Murni bulan dan tahun, tanpa terpengaruh filter ditolak)
+        $statistikAbsensiFull = Absensi::where('user_id', Auth::id())
+                            ->whereMonth('tanggal', $bulan)
+                            ->whereYear('tanggal', $tahun)
+                            ->get();
+
         $rekapStatistik = [
-            'total_sakit'        => $riwayatAbsensi->where('status_kehadiran', 'sakit')->count(),
-            'total_alpa'         => $riwayatAbsensi->where('status_kehadiran', 'alpa')->count(),
-            'total_izin'         => $riwayatAbsensi->where('status_kehadiran', 'izin')->count(),
+            'total_sakit'        => $statistikAbsensiFull->where('status_kehadiran', 'sakit')->count(),
+            'total_alpa'         => $statistikAbsensiFull->where('status_kehadiran', 'alpa')->count(),
+            'total_izin'         => $statistikAbsensiFull->where('status_kehadiran', 'izin')->count(),
             'sisa_cuti'          => Auth::user()->sisa_cuti ?? '-',
-            'total_terlambat'    => $riwayatAbsensi->sum('menit_terlambat'),
-            'total_pulang_cepat' => $riwayatAbsensi->sum('menit_pulang_cepat'),
+            'total_terlambat'    => $statistikAbsensiFull->sum('menit_terlambat'),
+            'total_pulang_cepat' => $statistikAbsensiFull->sum('menit_pulang_cepat'),
         ];
 
-        return view('pjlp.absensi.index', compact('riwayatAbsensi', 'bulan', 'tahun', 'rekapStatistik'));
+        return view('pjlp.absensi.index', compact('riwayatAbsensi', 'bulan', 'tahun', 'rekapStatistik', 'statusKlarifikasi'));
     }
 
     // Memproses form klarifikasi dari PJLP
@@ -67,7 +76,7 @@ class AbsensiController extends Controller
         $absensi->update([
             'alasan_klarifikasi' => $request->alasan_klarifikasi,
             'file_bukti_absensi' => $namaFile,
-            'status_klarifikasi' => 'pending', 
+            'status_klarifikasi' => 'pending',
         ]);
 
         return redirect()->back()->with('success', 'Klarifikasi absensi berhasil dikirim dan menunggu validasi Atasan.');

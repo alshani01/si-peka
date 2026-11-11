@@ -1,13 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Rekapitulasi Laporan Kinerja Pegawai') }}
+            {{ __('Rekapitulasi Laporan Kinerja') }}
         </h2>
     </x-slot>
 
     <div class="py-6 md:py-12 pb-28 md:pb-12" x-data="rekapKinerjaPage()">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            
+
             @if (session('success'))
                 <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-2xl shadow-sm flex items-center gap-3">
                     <svg class="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -18,7 +18,7 @@
                 </div>
             @endif
 
-            <!-- TAB NAVIGASI DESKTOP (4 TAB) -->
+            <!-- TAB NAVIGASI DESKTOP (4 TAB UTAMA) -->
             <div class="hidden sm:flex bg-white p-2 rounded-2xl shadow-sm border border-gray-100 space-x-1">
                 <a href="{{ route('admin.pegawai.index') }}" class="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs text-center {{ request()->routeIs('admin.pegawai.*') ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50' }} transition">
                     Manajemen Pegawai
@@ -37,6 +37,7 @@
             <!-- FILTER PERIODE & PENCARIAN -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
                 <form id="form-filter-kinerja" @submit.prevent="filterData" method="GET" action="{{ route('admin.kinerja.rekap') }}" class="space-y-4">
+                    <input type="hidden" name="tab" value="rekap">
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Cari Pegawai / ID</label>
@@ -103,14 +104,14 @@
             </div>
 
             <!-- KONTAINER REKAPITULASI -->
-            <div id="area-tabel-kinerja" @click="handlePaginationClick($event)" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div id="area-tabel-kinerja" @click="handlePaginationClick($event)" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <div>
                         <div class="flex items-center space-x-2">
                             <h3 class="font-bold text-gray-800 text-sm md:text-base">Data Rekapitulasi Kinerja</h3>
                             <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                                 @if(isset($tipeFilter) && $tipeFilter === 'harian')
-                                    {{ \Carbon\Carbon::parse($tanggal)->translatedFormat('d F Y') }}
+                                    {{ \Carbon\Carbon::parse($tanggal ?? date('Y-m-d'))->translatedFormat('d F Y') }}
                                 @else
                                     {{ \Carbon\Carbon::createFromDate($tahun ?? date('Y'), $bulan ?? date('m'), 1)->translatedFormat('F Y') }}
                                 @endif
@@ -119,22 +120,38 @@
                         <p class="text-xs text-gray-500 mt-0.5">Suku Dinas Ketahanan Pangan, Kelautan, dan Pertanian Jakarta Selatan</p>
                     </div>
 
-                    @php
-                        $pdfParams = [
-                            'tipe_filter' => $tipeFilter ?? 'bulanan', 
-                            'tanggal' => $tanggal ?? date('Y-m-d'), 
-                            'bulan' => $bulan ?? date('m'), 
-                            'tahun' => $tahun ?? date('Y'), 
-                            'search' => $search ?? '',
-                            'status_validasi' => $statusValidasi ?? ''
-                        ];
-                    @endphp
-                    <a href="{{ route('admin.kinerja.rekap.pdf', $pdfParams) }}" target="_blank" class="px-4 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition shadow flex items-center justify-center">
-                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        Unduh Rekap PDF
-                    </a>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+
+                        <!-- TOMBOL BUKA KUNCI (HANYA ADMIN) -->
+                        @if(auth()->user()->role === 'admin')
+                            <button type="button" @click="showBukaKunciModal = true" class="relative px-4 py-2.5 bg-amber-500 text-white font-bold text-xs rounded-xl hover:bg-amber-600 transition shadow flex items-center justify-center w-full sm:w-auto gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                <span>Buka Kunci Input</span>
+                                @if(isset($bukaKunciPendingCount) && $bukaKunciPendingCount > 0)
+                                    <span class="px-1.5 py-0.5 bg-rose-600 text-white font-extrabold rounded-full text-[10px] animate-pulse ml-1">
+                                        {{ $bukaKunciPendingCount }}
+                                    </span>
+                                @endif
+                            </button>
+                        @endif
+
+                        @php
+                            $pdfParams = [
+                                'tipe_filter' => $tipeFilter ?? 'bulanan',
+                                'tanggal' => $tanggal ?? date('Y-m-d'),
+                                'bulan' => $bulan ?? date('m'),
+                                'tahun' => $tahun ?? date('Y'),
+                                'search' => $search ?? request('search', ''),
+                                'status_validasi' => $statusValidasi ?? request('status_validasi', '')
+                            ];
+                        @endphp
+                        <a href="{{ route('admin.kinerja.rekap.pdf', $pdfParams) }}" target="_blank" class="px-4 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition shadow flex items-center justify-center w-full sm:w-auto">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Unduh Rekap PDF
+                        </a>
+                    </div>
                 </div>
-                
+
                 <!-- TAMPILAN DESKTOP -->
                 <div class="hidden md:block p-4 sm:p-6 overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
@@ -147,7 +164,6 @@
                                 <th class="p-3 text-center text-emerald-600">Disetujui</th>
                                 <th class="p-3 text-center text-rose-600">Ditolak</th>
                                 <th class="p-3 text-center text-amber-600">Menunggu</th>
-                                <th class="p-3 text-center">Perilaku</th>
                                 <th class="p-3 text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -160,6 +176,7 @@
                                         <p class="font-medium text-gray-700">{{ $row['jenis_pekerjaan'] }}</p>
                                         <p class="text-[10px] text-gray-400">{{ $row['lokasi_tugas'] }}</p>
                                     </td>
+
                                     <td class="p-3 text-center font-bold text-gray-800 bg-gray-50/50">{{ $row['total_laporan'] }}</td>
                                     <td class="p-3 text-center font-extrabold text-emerald-600 bg-emerald-50/30">{{ $row['laporan_acc'] }}</td>
                                     <td class="p-3 text-center font-extrabold text-rose-600 bg-rose-50/30">{{ $row['laporan_ditolak'] }}</td>
@@ -174,31 +191,7 @@
                                         @endif
                                     </td>
                                     <td class="p-3 text-center whitespace-nowrap">
-                                        @php
-                                            $nilai = $row['nilai_perilaku'];
-                                            if ($nilai >= 90) {
-                                                $badgeClass = 'bg-emerald-100 text-emerald-800';
-                                                $predikat = 'Sangat Baik';
-                                            } elseif ($nilai >= 76) {
-                                                $badgeClass = 'bg-blue-100 text-blue-800';
-                                                $predikat = 'Baik';
-                                            } elseif ($nilai >= 61) {
-                                                $badgeClass = 'bg-amber-100 text-amber-800';
-                                                $predikat = 'Cukup';
-                                            } elseif ($nilai > 0) {
-                                                $badgeClass = 'bg-rose-100 text-rose-800';
-                                                $predikat = 'Kurang';
-                                            } else {
-                                                $badgeClass = 'bg-gray-100 text-gray-500';
-                                                $predikat = 'Belum Dinilai';
-                                            }
-                                        @endphp
-                                        <span class="px-2.5 py-1 font-bold rounded-full text-[10px] {{ $badgeClass }}">
-                                            {{ $nilai > 0 ? $nilai . ' (' . $predikat . ')' : $predikat }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-center whitespace-nowrap">
-                                        <a href="{{ route('admin.kinerja.detail', ['id' => $row['id'], 'tipe_filter' => $tipeFilter ?? 'bulanan', 'tanggal' => $tanggal, 'bulan' => $bulan, 'tahun' => $tahun, 'status_validasi' => $statusValidasi]) }}" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm text-[11px] inline-flex items-center gap-1.5">
+                                        <a href="{{ route('admin.kinerja.detail', ['id' => $row['id'], 'tipe_filter' => $tipeFilter ?? 'bulanan', 'tanggal' => $tanggal ?? request('tanggal', date('Y-m-d')), 'bulan' => $bulan ?? request('bulan', date('m')), 'tahun' => $tahun ?? request('tahun', date('Y')), 'status_validasi' => $statusValidasi ?? request('status_validasi')]) }}" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm text-[11px] inline-flex items-center gap-1.5">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             Periksa
                                         </a>
@@ -206,14 +199,14 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="p-8 text-center text-gray-400 italic">Belum ada data kinerja pada periode ini.</td>
+                                    <td colspan="10" class="p-8 text-center text-gray-400 italic">Belum ada data kinerja pada periode ini.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
 
-                <!-- TAMPILAN MOBILE -->
+                <!-- TAMPILAN MOBILE REKAP -->
                 <div class="md:hidden p-3 space-y-3 bg-gray-50/50">
                     @forelse ($rekapKinerja as $row)
                         <div class="border border-gray-200 bg-white rounded-xl overflow-hidden shadow-sm transition">
@@ -262,7 +255,7 @@
                                     </div>
                                 </div>
 
-                                <a href="{{ route('admin.kinerja.detail', ['id' => $row['id'], 'tipe_filter' => $tipeFilter ?? 'bulanan', 'tanggal' => $tanggal, 'bulan' => $bulan, 'tahun' => $tahun, 'status_validasi' => $statusValidasi]) }}" class="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm text-xs mt-2">
+                                <a href="{{ route('admin.kinerja.detail', ['id' => $row['id'], 'tipe_filter' => $tipeFilter ?? 'bulanan', 'tanggal' => $tanggal ?? request('tanggal', date('Y-m-d')), 'bulan' => $bulan ?? request('bulan', date('m')), 'tahun' => $tahun ?? request('tahun', date('Y')), 'status_validasi' => $statusValidasi ?? request('status_validasi')]) }}" class="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-sm text-xs mt-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     Buka Halaman Pemeriksaan
                                 </a>
@@ -278,8 +271,390 @@
                 </div>
             </div>
 
+            <!-- MODAL BUKA KUNCI INPUT (HANYA MUNCUL DI PERAN ADMIN) -->
+            @if(auth()->user()->role === 'admin')
+                <div x-show="showBukaKunciModal" x-cloak
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+
+                    <div @click.away="showBukaKunciModal = false"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+                        class="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden border border-gray-100">
+
+                        <!-- Header Modal -->
+                        <div class="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-amber-50/60 via-white to-white">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-extrabold text-gray-800 text-sm sm:text-base">Daftar Permohonan Buka Kunci Input</h3>
+                                    <p class="text-xs text-gray-500 mt-0.5">
+                                        Periode Terfilter:
+                                        <span class="font-bold text-amber-700">
+                                            @if(($tipeFilter ?? 'bulanan') === 'harian')
+                                                {{ \Carbon\Carbon::parse($tanggal ?? date('Y-m-d'))->translatedFormat('d F Y') }}
+                                            @else
+                                                {{ \Carbon\Carbon::createFromDate($tahun ?? date('Y'), $bulan ?? date('m'), 1)->translatedFormat('F Y') }}
+                                            @endif
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <button @click="showBukaKunciModal = false" class="p-2 text-gray-400 hover:text-rose-600 bg-gray-50 hover:bg-rose-50 rounded-xl transition border border-gray-200/60 shadow-2xs">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Body Modal (Scrollable) -->
+                        <div id="area-modal-buka-kunci" @click="handleModalPaginationClick($event)" class="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 bg-slate-50/50">
+
+                            <!-- FILTER BUKA KUNCI -->
+                            <div class="bg-white rounded-2xl shadow-2xs border border-gray-100 p-4 sm:p-5">
+                                <form method="GET" action="{{ route('admin.kinerja.rekap') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                                    <input type="hidden" name="tab" value="buka_kunci">
+
+                                    <!-- HIDDEN INPUT UNTUK MEMBAWA FILTER PERIODE HALAMAN UTAMA -->
+                                    <input type="hidden" name="tipe_filter" value="{{ $tipeFilter ?? 'bulanan' }}">
+                                    <input type="hidden" name="bulan" value="{{ $bulan ?? date('m') }}">
+                                    <input type="hidden" name="tahun" value="{{ $tahun ?? date('Y') }}">
+                                    <input type="hidden" name="tanggal" value="{{ $tanggal ?? date('Y-m-d') }}">
+                                    <input type="hidden" name="search" value="{{ $search ?? '' }}">
+                                    <input type="hidden" name="status_validasi" value="{{ $statusValidasi ?? '' }}">
+
+                                    <div class="sm:col-span-5">
+                                        <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">Cari Pegawai / ID</label>
+                                        <div class="relative">
+                                            <input type="text" name="search_buka_kunci" value="{{ $searchBukaKunci ?? '' }}" placeholder="Nama / ID PJLP..." class="w-full border-gray-200 rounded-xl text-xs pl-9 pr-3 py-2.5 focus:ring-amber-500 focus:border-amber-500 bg-gray-50/50 focus:bg-white transition">
+                                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                        </div>
+                                    </div>
+
+                                    <div class="sm:col-span-4">
+                                        <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">Status Pengajuan</label>
+                                        <select name="status_buka_kunci" onchange="this.form.submit()" class="w-full border-gray-200 rounded-xl text-xs py-2.5 px-3 focus:ring-amber-500 focus:border-amber-500 bg-gray-50/50 focus:bg-white font-semibold transition">
+                                            <option value="pending" {{ ($statusBukaKunci ?? '') === 'pending' ? 'selected' : '' }}>Pending (Menunggu)</option>
+                                            <option value="disetujui" {{ ($statusBukaKunci ?? '') === 'disetujui' ? 'selected' : '' }}>Disetujui</option>
+                                            <option value="ditolak" {{ ($statusBukaKunci ?? '') === 'ditolak' ? 'selected' : '' }}>Ditolak</option>
+                                            <option value="semua" {{ ($statusBukaKunci ?? '') === 'semua' ? 'selected' : '' }}>Semua Status</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="sm:col-span-3 flex items-center gap-2">
+                                        <button type="submit" class="flex-1 py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                                            Filter
+                                        </button>
+                                        <a href="{{ route('admin.kinerja.rekap', ['tab' => 'buka_kunci', 'tipe_filter' => $tipeFilter ?? 'bulanan', 'bulan' => $bulan ?? date('m'), 'tahun' => $tahun ?? date('Y'), 'tanggal' => $tanggal ?? date('Y-m-d'), 'search' => $search ?? '', 'status_validasi' => $statusValidasi ?? '']) }}" class="py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition text-center">
+                                            Reset
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- TABEL DESKTOP & CARDS ACCORDION MOBILE BUKA KUNCI -->
+                            <div class="bg-white rounded-2xl shadow-2xs border border-gray-100 overflow-hidden">
+
+                                <!-- DESKTOP TABLE VIEW -->
+                                <div class="hidden md:block overflow-x-auto">
+                                    <table class="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr class="bg-gray-100/70 text-gray-700 uppercase font-bold text-[10px] tracking-wider border-b border-gray-200">
+                                                <th class="p-3.5 pl-4">Pegawai</th>
+                                                <th class="p-3.5">Tanggal Terkunci</th>
+                                                <th class="p-3.5">Alasan Keterlambatan</th>
+                                                <th class="p-3.5 text-center">Status</th>
+                                                <th class="p-3.5 text-center pr-4">Aksi Persetujuan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            @forelse ($pengajuanBukaKunci as $item)
+                                                <tr class="hover:bg-amber-50/20 transition">
+                                                    <td class="p-3.5 pl-4 whitespace-nowrap">
+                                                        <p class="font-bold text-gray-800">{{ $item->user->name ?? '-' }}</p>
+                                                        <p class="text-[10px] text-gray-400 font-mono mt-0.5">ID: {{ $item->user->id_pjlp ?? '-' }}</p>
+                                                    </td>
+                                                    <td class="p-3.5 whitespace-nowrap">
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-800 font-bold text-[11px] rounded-lg border border-amber-200/60">
+                                                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                            {{ \Carbon\Carbon::parse($item->tanggal_terlewat)->translatedFormat('d F Y') }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="p-3.5">
+                                                        <p class="text-gray-700 leading-relaxed max-w-md font-medium text-[11px]">{{ $item->alasan }}</p>
+                                                        @if($item->catatan_admin)
+                                                            <div class="mt-1.5 p-2 bg-rose-50 rounded-lg border border-rose-100 text-[10px] text-rose-700 font-medium">
+                                                                <span class="font-bold">Catatan Admin:</span> "{{ $item->catatan_admin }}"
+                                                            </div>
+                                                        @endif
+                                                        <span class="text-[9px] text-gray-400 block mt-1">Diajukan: {{ \Carbon\Carbon::parse($item->created_at)->translatedFormat('d M Y, H:i') }} WIB</span>
+                                                    </td>
+                                                    <td class="p-3.5 text-center whitespace-nowrap">
+                                                        @if($item->status === 'pending')
+                                                            <span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-extrabold rounded-full text-[10px] border border-amber-200 inline-flex items-center gap-1 animate-pulse">
+                                                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                                Pending
+                                                            </span>
+                                                        @elseif($item->status === 'disetujui')
+                                                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold rounded-full text-[10px] border border-emerald-200 inline-flex items-center gap-1">
+                                                                <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                                Disetujui
+                                                            </span>
+                                                        @else
+                                                            <span class="px-2.5 py-1 bg-rose-100 text-rose-800 font-extrabold rounded-full text-[10px] border border-rose-200 inline-flex items-center gap-1">
+                                                                <svg class="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                Ditolak
+                                                            </span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="p-3.5 text-center whitespace-nowrap pr-4">
+                                                        @if($item->status === 'pending')
+                                                            <div class="flex items-center justify-center gap-1.5">
+                                                                <button type="button" @click="openApproveModal('{{ route('admin.kinerja.buka_kunci.approve', $item->id) }}', '{{ addslashes($item->user->name ?? '') }}', '{{ \Carbon\Carbon::parse($item->tanggal_terlewat)->translatedFormat('d F Y') }}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl transition shadow-2xs flex items-center gap-1">
+                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                                    Setujui
+                                                                </button>
+
+                                                                <button type="button" @click="openRejectModal('{{ $item->id }}', '{{ addslashes($item->user->name ?? '') }}', '{{ \Carbon\Carbon::parse($item->tanggal_terlewat)->translatedFormat('d F Y') }}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-xl transition shadow-2xs flex items-center gap-1">
+                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                    Tolak
+                                                                </button>
+                                                            </div>
+                                                        @else
+                                                            <span class="text-[11px] text-gray-400 italic">Selesai Diverifikasi</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="5" class="p-8 text-center text-gray-400 italic">Tidak ada permohonan buka kunci pada periode ini.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- MOBILE ACCORDION VIEW (GROUPED PER PEGAWAI) -->
+                                <div class="md:hidden p-3 space-y-3 bg-gray-50/50">
+                                    @php
+                                        $groupedBukaKunci = $pengajuanBukaKunci->groupBy('user_id');
+                                    @endphp
+
+                                    @forelse ($groupedBukaKunci as $userId => $items)
+                                        @php
+                                            $firstItem = $items->first();
+                                            $userName = $firstItem->user->name ?? '-';
+                                            $userIdPjlp = $firstItem->user->id_pjlp ?? '-';
+                                            $pendingCount = $items->where('status', 'pending')->count();
+                                            $totalCount = $items->count();
+                                        @endphp
+
+                                        <div class="border border-gray-200 bg-white rounded-2xl overflow-hidden shadow-2xs transition">
+                                            <!-- Accordion Header -->
+                                            <div class="p-3.5 flex items-center justify-between cursor-pointer bg-white hover:bg-gray-50/80 transition" @click="expandedBukaKunciUser = expandedBukaKunciUser === {{ $userId }} ? null : {{ $userId }}">
+                                                <div class="flex-1 pr-2">
+                                                    <div class="flex flex-wrap items-center gap-1.5">
+                                                        <p class="font-extrabold text-gray-900 text-xs">{{ $userName }}</p>
+                                                        <span class="text-[9px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">ID: {{ $userIdPjlp }}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2 mt-1.5">
+                                                        <span class="text-[10px] text-gray-500 font-semibold">{{ $totalCount }} Pengajuan Buka Kunci</span>
+                                                        @if($pendingCount > 0)
+                                                            <span class="text-[9px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 animate-pulse">
+                                                                {{ $pendingCount }} Menunggu
+                                                            </span>
+                                                        @else
+                                                            <span class="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                                                Selesai
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <svg class="w-4 h-4 text-gray-400 transform transition-transform flex-shrink-0" :class="{'rotate-180': expandedBukaKunciUser === {{ $userId }}}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                            </div>
+
+                                            <!-- Accordion Content List -->
+                                            <div x-show="expandedBukaKunciUser === {{ $userId }}" x-cloak style="display: none;" class="border-t border-gray-100 bg-gray-50/80 p-3 space-y-3">
+                                                @foreach($items as $item)
+                                                    <div class="bg-white rounded-xl border border-gray-200 p-3 space-y-2.5 shadow-2xs">
+                                                        <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                                                            <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/60">
+                                                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                                {{ \Carbon\Carbon::parse($item->tanggal_terlewat)->translatedFormat('d F Y') }}
+                                                            </span>
+                                                            @if($item->status === 'pending')
+                                                                <span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-extrabold rounded-full text-[10px] border border-amber-200">
+                                                                    Pending
+                                                                </span>
+                                                            @elseif($item->status === 'disetujui')
+                                                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold rounded-full text-[10px] border border-emerald-200">
+                                                                    Disetujui
+                                                                </span>
+                                                            @else
+                                                                <span class="px-2 py-0.5 bg-rose-100 text-rose-800 font-extrabold rounded-full text-[10px] border border-rose-200">
+                                                                    Ditolak
+                                                                </span>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="space-y-1 text-xs">
+                                                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Alasan Keterlambatan</span>
+                                                            <p class="text-gray-700 bg-gray-50 p-2 rounded-lg border border-gray-100 text-[11px] leading-relaxed">{{ $item->alasan }}</p>
+                                                            @if($item->catatan_admin)
+                                                                <div class="p-2 bg-rose-50 rounded-lg border border-rose-100 text-[10px] text-rose-700 mt-1">
+                                                                    <span class="font-bold">Catatan Admin:</span> "{{ $item->catatan_admin }}"
+                                                                </div>
+                                                            @endif
+                                                            <span class="text-[9px] text-gray-400 block pt-0.5">Diajukan: {{ \Carbon\Carbon::parse($item->created_at)->translatedFormat('d M Y, H:i') }} WIB</span>
+                                                        </div>
+
+                                                        @if($item->status === 'pending')
+                                                            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                                                                <button type="button" @click="openApproveModal('{{ route('admin.kinerja.buka_kunci.approve', $item->id) }}', '{{ addslashes($userName) }}', '{{ \Carbon\Carbon::parse($item->tanggal_terlewat)->translatedFormat('d F Y') }}')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl transition shadow-2xs flex items-center justify-center gap-1">
+                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                                    Setujui
+                                                                </button>
+
+                                                                <button type="button" @click="openRejectModal('{{ $item->id }}', '{{ addslashes($userName) }}', '{{ \Carbon\Carbon::parse($item->tanggal_terlewat)->translatedFormat('d F Y') }}')" class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-xl transition shadow-2xs flex items-center justify-center gap-1">
+                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                    Tolak
+                                                                </button>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <div class="p-6 text-center text-gray-400 text-xs italic bg-white rounded-xl border border-gray-200">Tidak ada permohonan buka kunci pada periode ini.</div>
+                                    @endforelse
+                                </div>
+
+                                <!-- PAGINATION MODAL -->
+                                <div class="p-4 border-t border-gray-100 bg-white">
+                                    {{ $pengajuanBukaKunci->appends([
+                                        'tab' => 'buka_kunci',
+                                        'tipe_filter' => $tipeFilter ?? 'bulanan',
+                                        'bulan' => $bulan ?? date('m'),
+                                        'tahun' => $tahun ?? date('Y'),
+                                        'tanggal' => $tanggal ?? date('Y-m-d'),
+                                        'search' => $search ?? '',
+                                        'status_validasi' => $statusValidasi ?? '',
+                                        'search_buka_kunci' => request('search_buka_kunci'),
+                                        'status_buka_kunci' => request('status_buka_kunci')
+                                    ])->links() }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL PERSETUJUAN PENGAJUAN BUKA KUNCI (SUB-MODAL APPROVE) -->
+                <div x-show="showApproveModal" x-cloak
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+
+                    <div @click.away="showApproveModal = false"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+                        class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4">
+
+                        <div class="flex items-center gap-3 border-b border-gray-100 pb-3">
+                            <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold text-gray-800">Setujui Permohonan Buka Kunci</h3>
+                                <p class="text-[11px] text-gray-500">Konfirmasi persetujuan akses pengisian</p>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-gray-600 leading-relaxed">Apakah Anda yakin ingin menyetujui permohonan buka kunci untuk pegawai <strong class="text-gray-900" x-text="approvePegawaiName"></strong> pada tanggal terkunci <strong class="text-amber-700" x-text="approveTanggal"></strong>?</p>
+
+                        <form :action="approveActionUrl" method="POST" class="pt-2">
+                            @csrf
+                            <div class="flex justify-end gap-2 border-t border-gray-100 pt-3">
+                                <button type="button" @click="showApproveModal = false" class="px-4 py-2 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition">Batal</button>
+                                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition shadow-xs flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Ya, Setujui
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- MODAL PENOLAKAN PENGAJUAN BUKA KUNCI (SUB-MODAL REJECT) -->
+                <div x-show="showRejectModal" x-cloak
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+
+                    <div @click.away="showRejectModal = false"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+                        class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4">
+
+                        <div class="flex items-center gap-3 border-b border-gray-100 pb-3">
+                            <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold text-gray-800">Tolak Permohonan Buka Kunci</h3>
+                                <p class="text-[11px] text-gray-500">Konfirmasi penolakan permohonan</p>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-gray-600 leading-relaxed">Berikan catatan alasan penolakan untuk pegawai <strong class="text-gray-900" x-text="rejectPegawaiName"></strong> pada tanggal terkunci <strong class="text-amber-700" x-text="rejectTanggal"></strong>.</p>
+
+                        <form :action="rejectActionUrl" method="POST" class="space-y-4">
+                            @csrf
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">Catatan Penolakan Admin</label>
+                                <textarea name="catatan_admin" required rows="3" class="w-full border-gray-300 rounded-xl text-xs p-3 focus:ring-rose-500 focus:border-rose-500 bg-gray-50/50 focus:bg-white transition" placeholder="Contoh: Pengajuan ditolak karena alasan tidak sesuai dengan ketentuan."></textarea>
+                            </div>
+
+                            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                                <button type="button" @click="showRejectModal = false" class="px-4 py-2 bg-gray-100 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-200 transition">Batal</button>
+                                <button type="submit" class="px-4 py-2 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition shadow-xs flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Kirim Penolakan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
             <!-- BOTTOM NAVIGATION BAR (MOBILE ADMIN - 4 MENU) -->
-            <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] z-[90] px-2 py-2 flex justify-around items-center">
+            <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] z-[80] px-2 py-2 flex justify-around items-center">
                 <a href="{{ route('admin.pegawai.index') }}" class="flex flex-col items-center {{ request()->routeIs('admin.pegawai.*') ? 'text-blue-600 font-bold' : 'text-gray-500 hover:text-gray-800' }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     <span class="text-[9px] mt-1">Pegawai</span>
@@ -305,7 +680,34 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('rekapKinerjaPage', () => ({
                 expandedRow: null,
+                expandedBukaKunciUser: null,
                 tipeFilter: '{{ $tipeFilter ?? "bulanan" }}',
+
+                showBukaKunciModal: '{{ $tab ?? "rekap" }}' === 'buka_kunci',
+
+                showRejectModal: false,
+                rejectPegawaiName: '',
+                rejectTanggal: '',
+                rejectActionUrl: '',
+
+                showApproveModal: false,
+                approvePegawaiName: '',
+                approveTanggal: '',
+                approveActionUrl: '',
+
+                openApproveModal(actionUrl, name, tanggal) {
+                    this.approvePegawaiName = name;
+                    this.approveTanggal = tanggal;
+                    this.approveActionUrl = actionUrl;
+                    this.showApproveModal = true;
+                },
+
+                openRejectModal(id, name, tanggal) {
+                    this.rejectPegawaiName = name;
+                    this.rejectTanggal = tanggal;
+                    this.rejectActionUrl = '/admin/kinerja/buka-kunci/' + id + '/reject';
+                    this.showRejectModal = true;
+                },
 
                 fetchAndSwap(targetUrl) {
                     fetch(targetUrl)
@@ -313,13 +715,37 @@
                         .then(html => {
                             const parser = new DOMParser();
                             const doc = parser.parseFromString(html, 'text/html');
+
+                            // Swap tabel rekap kinerja utama
                             const newContent = doc.getElementById('area-tabel-kinerja');
                             if (newContent) {
                                 document.getElementById('area-tabel-kinerja').innerHTML = newContent.innerHTML;
                             }
+
+                            // SWAP JUGA ISI MODAL BUKA KUNCI AGAR SELALU SINKRON DENGAN PERIODE YANG DIFIILTER
+                            const newModalContent = doc.getElementById('area-modal-buka-kunci');
+                            if (newModalContent) {
+                                document.getElementById('area-modal-buka-kunci').innerHTML = newModalContent.innerHTML;
+                            }
+
                             window.history.pushState({}, '', targetUrl);
                         })
                         .catch(error => console.error('Gagal memuat rekap kinerja:', error));
+                },
+
+                fetchAndSwapModal(targetUrl) {
+                    fetch(targetUrl)
+                        .then(response => response.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const newModalContent = doc.getElementById('area-modal-buka-kunci');
+                            if (newModalContent) {
+                                document.getElementById('area-modal-buka-kunci').innerHTML = newModalContent.innerHTML;
+                            }
+                            window.history.pushState({}, '', targetUrl);
+                        })
+                        .catch(error => console.error('Gagal memuat modal buka kunci:', error));
                 },
 
                 handlePaginationClick(event) {
@@ -330,10 +756,18 @@
                     }
                 },
 
+                handleModalPaginationClick(event) {
+                    const link = event.target.closest('a');
+                    if (link && link.href && link.closest('.pagination, nav')) {
+                        event.preventDefault();
+                        this.fetchAndSwapModal(link.href);
+                    }
+                },
+
                 filterData() {
                     const form = document.getElementById('form-filter-kinerja');
                     const formData = new FormData(form);
-                    
+
                     if (this.tipeFilter === 'bulanan') {
                         formData.delete('tanggal');
                     } else {

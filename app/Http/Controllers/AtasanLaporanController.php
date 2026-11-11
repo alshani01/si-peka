@@ -6,9 +6,9 @@ use App\Models\LaporanKinerja;
 use App\Models\Absensi;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class AtasanLaporanController extends Controller
@@ -19,6 +19,7 @@ class AtasanLaporanController extends Controller
         $bulan = $request->bulan ?? date('m');
         $tahun = $request->tahun ?? date('Y');
         $pegawaiId = $request->pegawai_id ?? 'all';
+        $statusValidasi = $request->status_validasi ?? 'all';
         $search = $request->search ?? null;
 
         // Ambil daftar seluruh bawahan milik atasan ini
@@ -31,6 +32,10 @@ class AtasanLaporanController extends Controller
 
         if ($pegawaiId !== 'all' && !empty($pegawaiId)) {
             $queryLaporan->where('user_id', $pegawaiId);
+        }
+
+        if ($statusValidasi !== 'all' && !empty($statusValidasi)) {
+            $queryLaporan->where('status_validasi', $statusValidasi);
         }
 
         if (!empty($search)) {
@@ -51,29 +56,33 @@ class AtasanLaporanController extends Controller
             ]);
 
         // B. Ambil Kombinasi Unik dari Absensi (Cuti, Sakit, Izin, Alpa)
-        $queryAbsensi = Absensi::whereHas('user', fn($q) => $q->where('atasan_id', $atasanId))
-            ->whereIn('status_kehadiran', ['cuti', 'sakit', 'izin', 'alpa'])
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun);
+        // Catatan: Jika user memfilter status validasi laporan selain 'all' atau 'pending', data absensi tanpa laporan bisa disembunyikan agar tabel akurat
+        $groupsAbsensi = collect();
+        if ($statusValidasi === 'all') {
+            $queryAbsensi = Absensi::whereHas('user', fn($q) => $q->where('atasan_id', $atasanId))
+                ->whereIn('status_kehadiran', ['cuti', 'sakit', 'izin', 'alpa'])
+                ->whereMonth('tanggal', $bulan)
+                ->whereYear('tanggal', $tahun);
 
-        if ($pegawaiId !== 'all' && !empty($pegawaiId)) {
-            $queryAbsensi->where('user_id', $pegawaiId);
+            if ($pegawaiId !== 'all' && !empty($pegawaiId)) {
+                $queryAbsensi->where('user_id', $pegawaiId);
+            }
+
+            if (!empty($search)) {
+                $queryAbsensi->whereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"));
+            }
+
+            $groupsAbsensi = $queryAbsensi->select('user_id', 'tanggal as tanggal_tugas')
+                ->groupBy('user_id', 'tanggal')
+                ->get()
+                ->map(fn($item) => [
+                    'user_id' => $item->user_id,
+                    'tanggal_tugas' => $item->tanggal_tugas,
+                    'type' => 'absensi'
+                ]);
         }
 
-        if (!empty($search)) {
-            $queryAbsensi->whereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"));
-        }
-
-        $groupsAbsensi = $queryAbsensi->select('user_id', 'tanggal as tanggal_tugas')
-            ->groupBy('user_id', 'tanggal')
-            ->get()
-            ->map(fn($item) => [
-                'user_id' => $item->user_id,
-                'tanggal_tugas' => $item->tanggal_tugas,
-                'type' => 'absensi'
-            ]);
-
-        // C. Gabungkan Kedua Grup (Prioritaskan jika ada Laporan, jika tidak pakai data Absensi/Cuti)
+        // C. Gabungkan Kedua Grup
         $mergedGroups = collect();
         $allGroupsRaw = $groupsLaporan->concat($groupsAbsensi);
 
@@ -112,17 +121,26 @@ class AtasanLaporanController extends Controller
             foreach ($currentGroupItems as $group) {
                 $key = $group->user_id . '_' . $group->tanggal_tugas;
 
-                // Cek data laporan kinerja
-                $items = LaporanKinerja::where('user_id', $group->user_id)
-                    ->where('tanggal_tugas', $group->tanggal_tugas)
-                    ->orderBy('created_at', 'asc')
-                    ->get();
+                // Cek data laporan kinerja dengan menerapkan filter status validasi juga pada detailnya
+                $itemsQuery = LaporanKinerja::where('user_id', $group->user_id)
+                    ->where('tanggal_tugas', $group->tanggal_tugas);
+
+                if ($statusValidasi !== 'all' && !empty($statusValidasi)) {
+                    $itemsQuery->where('status_validasi', $statusValidasi);
+                }
+
+                $items = $itemsQuery->orderBy('created_at', 'asc')->get();
 
                 // Cek data absensi/cuti
                 $infoAbsensi = Absensi::where('user_id', $group->user_id)
                     ->where('tanggal', $group->tanggal_tugas)
                     ->whereIn('status_kehadiran', ['cuti', 'sakit', 'izin', 'alpa'])
                     ->first();
+
+                // Jika difilter status validasi tertentu dan items kosong (misal karena absensi murni), skip atau masukkan
+                if ($statusValidasi !== 'all' && $items->isEmpty()) {
+                    continue;
+                }
 
                 $laporanBawahan->put($key, [
                     'items' => $items,
@@ -143,7 +161,7 @@ class AtasanLaporanController extends Controller
         $pendingCount = LaporanKinerja::whereHas('user', fn($q) => $q->where('atasan_id', $atasanId))
             ->where('status_validasi', 'pending')->count();
 
-        return view('atasan.laporan.index', compact('laporanBawahan', 'laporanPaginated', 'bulan', 'tahun', 'pegawaiId', 'search', 'daftarBawahan', 'pendingCount', 'allPendingIds'));
+        return view('atasan.laporan.index', compact('laporanBawahan', 'laporanPaginated', 'bulan', 'tahun', 'pegawaiId', 'search', 'daftarBawahan', 'pendingCount', 'allPendingIds', 'statusValidasi'));
     }
 
     public function validasi(Request $request, $id)

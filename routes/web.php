@@ -20,7 +20,7 @@ Route::get('/', function () {
 // Pengalihan cerdas setelah Login berdasarkan Role
 Route::get('/dashboard', function () {
     $role = auth()->user()->role;
-    
+
     if (in_array($role, ['admin', 'pimpinan'])) {
         return redirect()->route('admin.dashboard');
     } elseif ($role === 'atasan') {
@@ -32,7 +32,7 @@ Route::get('/dashboard', function () {
 
 // --- GRUP ROUTE ADMIN & PIMPINAN ---
 Route::middleware(['auth', 'role:admin,pimpinan'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     // Redirect otomatis ke Manajemen Pegawai
     Route::get('/dashboard', function () {
         return redirect()->route('admin.pegawai.index');
@@ -40,11 +40,11 @@ Route::middleware(['auth', 'role:admin,pimpinan'])->prefix('admin')->name('admin
 
     // 1. Modul Manajemen Pegawai (Tampilan & PDF - Admin & Pimpinan)
     Route::get('/pegawai', [AdminPegawaiController::class, 'index'])->name('pegawai.index');
-    Route::get('/pegawai/export-pdf', [AdminPegawaiController::class, 'exportPdf'])->name('pegawai.export_pdf'); 
+    Route::get('/pegawai/export-pdf', [AdminPegawaiController::class, 'exportPdf'])->name('pegawai.export_pdf');
 
     // 2. Rekap Absensi (Admin & Pimpinan)
     Route::get('/absensi/rekap', [AdminAbsensiImportController::class, 'rekap'])->name('absensi.rekap');
-    Route::get('/absensi/rekap/pdf', [AdminAbsensiImportController::class, 'downloadPdf'])->name('absensi.pdf'); 
+    Route::get('/absensi/rekap/pdf', [AdminAbsensiImportController::class, 'downloadPdf'])->name('absensi.pdf');
 
     // 3. Rekap Kinerja (Admin & Pimpinan)
     Route::get('/kinerja/rekap', [AdminKinerjaController::class, 'index'])->name('kinerja.rekap');
@@ -70,7 +70,7 @@ Route::middleware(['auth', 'role:admin,pimpinan'])->prefix('admin')->name('admin
         Route::get('/absensi/import', [AdminAbsensiImportController::class, 'index'])->name('absensi.import');
         Route::post('/absensi/import', [AdminAbsensiImportController::class, 'prosesImport'])->name('absensi.proses_import');
         Route::get('/absensi/download-template', [AdminAbsensiImportController::class, 'downloadTemplate'])->name('absensi.template');
-        
+
         // Kelola Hari Libur
         Route::get('/hari-libur', [AdminHariLiburController::class, 'index'])->name('hari_libur.index');
         Route::post('/hari-libur', [AdminHariLiburController::class, 'store'])->name('hari_libur.store');
@@ -79,6 +79,10 @@ Route::middleware(['auth', 'role:admin,pimpinan'])->prefix('admin')->name('admin
         // Hapus Laporan Kinerja (Tunggal & Massal/Bulk)
         Route::delete('/kinerja/laporan/bulk-delete', [AdminKinerjaController::class, 'bulkDestroy'])->name('kinerja.laporan.bulk_delete');
         Route::delete('/kinerja/laporan/{id}', [AdminKinerjaController::class, 'destroy'])->name('kinerja.laporan.destroy');
+
+        // Buka Kunci Laporan (Persetujuan Admin: Setujui / Tolak)
+        Route::post('/kinerja/buka-kunci/{id}/approve', [AdminKinerjaController::class, 'approveBukaKunci'])->name('kinerja.buka_kunci.approve');
+        Route::post('/kinerja/buka-kunci/{id}/reject', [AdminKinerjaController::class, 'rejectBukaKunci'])->name('kinerja.buka_kunci.reject');
 
         // Hapus Penilaian Perilaku (Tunggal & Massal/Bulk)
         Route::delete('/penilaian/bulk-delete', [AdminPenilaianController::class, 'bulkDestroy'])->name('penilaian.bulk_delete');
@@ -99,7 +103,7 @@ Route::middleware(['auth', 'role:atasan'])->prefix('atasan')->name('atasan.')->g
     Route::get('/absensi', [AtasanAbsensiController::class, 'index'])->name('absensi.index');
     Route::post('/validasi-absensi/{id}', [AtasanAbsensiController::class, 'validasi'])->name('validasi_absensi');
     Route::post('/absensi/bulk-validasi', [AtasanAbsensiController::class, 'bulkValidasi'])->name('absensi.bulk_validasi');
-    
+
     Route::get('/cuti', [AtasanCutiController::class, 'index'])->name('cuti.index');
     Route::post('/cuti/bulk-validasi', [AtasanCutiController::class, 'bulkValidasi'])->name('cuti.bulk_validasi');
     Route::post('/cuti/{id}/validasi', [AtasanCutiController::class, 'validasi'])->name('cuti.validasi');
@@ -126,7 +130,7 @@ Route::middleware(['auth', 'role:pjlp'])->group(function () {
         $laporanPending = \App\Models\LaporanKinerja::where('user_id', $user->id)
             ->where('status_validasi', 'pending')
             ->count();
-            
+
         $totalHadir = \App\Models\Absensi::where('user_id', $user->id)
             ->whereMonth('tanggal', $bulanIni)
             ->whereYear('tanggal', $tahunIni)
@@ -146,18 +150,21 @@ Route::middleware(['auth', 'role:pjlp'])->group(function () {
             ->count();
 
         return view('pjlp.dashboard', compact(
-            'user', 
-            'laporanBulanIni', 
-            'laporanPending', 
-            'totalHadir', 
-            'totalTerlambat', 
+            'user',
+            'laporanBulanIni',
+            'laporanPending',
+            'totalHadir',
+            'totalTerlambat',
             'totalAlpa'
         ));
     })->name('pjlp.dashboard');
-    
+
     Route::get('/pjlp/laporan', [LaporanKinerjaController::class, 'create'])->name('pjlp.laporan.create');
     Route::post('/pjlp/laporan', [LaporanKinerjaController::class, 'store'])->name('pjlp.laporan.store');
     Route::get('/pjlp/laporan/pdf', [LaporanKinerjaController::class, 'exportPdf'])->name('pjlp.laporan.export_pdf');
+
+    // Pengajuan Buka Kunci Laporan Terkunci oleh PJLP
+    Route::post('/pjlp/buka-kunci', [LaporanKinerjaController::class, 'storeBukaKunci'])->name('pjlp.buka_kunci.store');
 
     Route::get('/pjlp/absensi', [\App\Http\Controllers\AbsensiController::class, 'index'])->name('pjlp.absensi.index');
     Route::post('/pjlp/absensi/{id}/klarifikasi', [\App\Http\Controllers\AbsensiController::class, 'klarifikasi'])->name('pjlp.absensi.klarifikasi');

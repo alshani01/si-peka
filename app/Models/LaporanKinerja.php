@@ -17,6 +17,7 @@ class LaporanKinerja extends Model
     // Mengizinkan penyimpanan data secara massal ke kolom-kolom ini
     protected $fillable = [
         'user_id',
+        'pengajuan_buka_kunci_id', // Ditambahkan untuk penanda laporan susulan
         'tanggal_tugas',
         'aktivitas_kinerja',
         'uraian_tugas',
@@ -29,6 +30,14 @@ class LaporanKinerja extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relasi: Laporan kinerja terhubung ke pengajuan buka kunci (jika diisi via susulan)
+     */
+    public function pengajuanBukaKunci()
+    {
+        return $this->belongsTo(PengajuanBukaKunci::class, 'pengajuan_buka_kunci_id');
     }
 
     /**

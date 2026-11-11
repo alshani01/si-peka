@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\LaporanKinerja;
 use App\Models\Absensi;
 use App\Models\Cuti;
+use App\Models\PengajuanBukaKunci; // Sesuaikan jika namespace model buka kunci Anda berbeda
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -62,7 +63,7 @@ class AdminPegawaiController extends Controller
             $q->whereIn('role', ['pjlp', 'p3k'])
               ->orWhere('kategori_pegawai', 'P3K');
         })->count();
-        
+
         $totalAtasan = User::whereIn('role', ['admin', 'atasan', 'pimpinan'])->count();
 
         $bulanSekarang = date('m');
@@ -87,6 +88,12 @@ class AdminPegawaiController extends Controller
             })
             ->count();
 
+        // Hitung total pengajuan buka kunci laporan susulan dengan status pending
+        // Catatan: Ubah nama Model 'PengajuanBukaKunci' jika menggunakan nama lain di aplikasi Anda
+        $bukaKunciPending = class_exists(\App\Models\PengajuanBukaKunci::class)
+            ? \App\Models\PengajuanBukaKunci::where('status', 'pending')->count()
+            : 0;
+
         $daftarAtasan = User::whereIn('role', ['admin', 'atasan', 'pimpinan'])
             ->where('status', 'aktif')
             ->orderByRaw("COALESCE(urutan_hirarki, 999) ASC")
@@ -94,12 +101,13 @@ class AdminPegawaiController extends Controller
             ->get();
 
         return view('admin.pegawai.index', compact(
-            'users', 
-            'totalPegawai', 
-            'totalAtasan', 
-            'laporanPending', 
+            'users',
+            'totalPegawai',
+            'totalAtasan',
+            'laporanPending',
             'klarifikasiPending',
             'cutiPending',
+            'bukaKunciPending', // Variabel baru diteruskan ke view
             'search',
             'roleFilter',
             'statusFilter',
@@ -197,7 +205,7 @@ class AdminPegawaiController extends Controller
     {
         $user = User::findOrFail($id);
         $daftarAtasan = User::whereIn('role', ['admin', 'atasan', 'pimpinan'])->where('status', 'aktif')->where('id', '!=', $id)->get();
-        
+
         return view('admin.pegawai.edit', compact('user', 'daftarAtasan'));
     }
 
@@ -228,7 +236,7 @@ class AdminPegawaiController extends Controller
 
         if (in_array($user->role, ['atasan', 'pimpinan']) && ($request->status === 'nonaktif' || $isBawahan)) {
             $bawahanCount = User::where('atasan_id', $user->id)->count();
-            
+
             if ($bawahanCount > 0) {
                 if ($request->filled('pengganti_atasan_id')) {
                     User::where('atasan_id', $user->id)->update(['atasan_id' => $request->pengganti_atasan_id]);
@@ -278,7 +286,7 @@ class AdminPegawaiController extends Controller
     public function resetPassword($id)
     {
         $user = User::findOrFail($id);
-        
+
         $user->update([
             'password' => Hash::make('password')
         ]);
@@ -296,7 +304,7 @@ class AdminPegawaiController extends Controller
 
         if (in_array($user->role, ['atasan', 'pimpinan'])) {
             $bawahanCount = User::where('atasan_id', $user->id)->count();
-            
+
             if ($bawahanCount > 0) {
                 if ($request->filled('pengganti_atasan_id')) {
                     User::where('atasan_id', $user->id)->update(['atasan_id' => $request->pengganti_atasan_id]);

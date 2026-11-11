@@ -76,13 +76,29 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'atasan_id');
     }
 
-    public function absensis() 
-    { 
-        return $this->hasMany(Absensi::class); 
+    public function absensis()
+    {
+        return $this->hasMany(Absensi::class);
     }
 
     public function cutis()
     {
         return $this->hasMany(Cuti::class);
+    }
+
+    /**
+     * Pengajuan Buka Kunci yang diajukan oleh user ini (Pegawai)
+     */
+    public function pengajuanBukaKunci()
+    {
+        return $this->hasMany(PengajuanBukaKunci::class, 'user_id');
+    }
+
+    /**
+     * Pengajuan Buka Kunci yang diproses oleh user ini (Admin)
+     */
+    public function persetujuanBukaKunci()
+    {
+        return $this->hasMany(PengajuanBukaKunci::class, 'approved_by');
     }
 }

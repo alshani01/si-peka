@@ -11,7 +11,7 @@
     <!-- Ruang bawah lega (pb-28 md:pb-12) agar tidak tertutup Bottom Nav di HP -->
     <div class="py-4 sm:py-6 md:py-12 pb-28 md:pb-12" x-data="laporanPage()">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            
+
             <!-- TAB NAVIGASI DESKTOP PJLP -->
             <div class="hidden sm:flex bg-white p-2 rounded-2xl shadow-sm border border-gray-100 space-x-1">
                 <a href="{{ route('pjlp.dashboard') }}" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs text-center text-gray-600 hover:bg-gray-50 transition">
@@ -56,45 +56,80 @@
             <!-- KARTU UTAMA FORMULIR -->
             <div class="bg-white overflow-hidden shadow-sm rounded-2xl border border-gray-100">
                 <div class="p-5 sm:p-6 text-gray-900">
-                    <h3 class="text-base sm:text-lg font-bold mb-4 text-blue-800 border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 class="text-base sm:text-lg font-bold mb-4 text-blue-800 border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <span class="flex items-center">
                             <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             Buat Laporan Baru
                         </span>
-                        <span class="text-xs font-semibold px-3 py-1 bg-blue-50 text-blue-700 rounded-lg w-fit">
-                            Jam Input Laporan : 06:00 - 18:00 WIB
-                        </span>
+
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <span class="text-xs font-semibold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg w-fit flex items-center justify-center">
+                                Jam Input Laporan : 06:00 - 18:00 WIB
+                            </span>
+                            <button type="button" @click="showBukaKunciModal = true" class="text-xs font-bold px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition shadow-sm flex items-center justify-center w-fit">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                Ajukan Buka Kunci
+                            </button>
+                        </div>
                     </h3>
 
                     @php
                         $jamSekarang = \Carbon\Carbon::now('Asia/Jakarta')->format('H:i');
-                        $isOpen = ($jamSekarang >= '06:00' && $jamSekarang <= '18:00');
+                        $isOpenReguler = ($jamSekarang >= '06:00' && $jamSekarang <= '18:00');
+                        $hasUnlockedDates = isset($pengajuanBukaKunciDisetujui) && $pengajuanBukaKunciDisetujui->count() > 0;
+                        $canSubmit = $isOpenReguler || $hasUnlockedDates;
                     @endphp
 
-                    @if(!$isOpen)
-                        <!-- Warning jika dibuka di luar jam operasional -->
+                    @if(!$isOpenReguler && !$hasUnlockedDates)
+                        <!-- Warning jika dibuka di luar jam operasional dan tidak ada izin buka kunci -->
                         <div class="mb-5 bg-amber-50 border-l-4 border-amber-500 text-amber-800 p-4 rounded-xl text-xs sm:text-sm">
                             <p class="font-bold flex items-center">
                                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 Form Laporan Ditutup
                             </p>
-                            <p class="mt-1">Pengisian laporan harian hanya dibuka pada pukul <strong>06:00 s/d 18:00 WIB</strong> di hari berjalan.</p>
+                            <p class="mt-1">Pengisian laporan harian reguler hanya dibuka pada pukul <strong>06:00 s/d 18:00 WIB</strong> di hari berjalan. Jika Anda tertinggal mengisi laporan hari sebelumnya, silakan gunakan fitur <strong>Ajukan Buka Kunci</strong> ke Admin.</p>
+                        </div>
+                    @elseif(!$isOpenReguler && $hasUnlockedDates)
+                        <!-- Info bahwa form terbuka khusus untuk tanggal susulan -->
+                        <div class="mb-5 bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-xl text-xs sm:text-sm">
+                            <p class="font-bold flex items-center">
+                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Akses Buka Kunci Aktif
+                            </p>
+                            <p class="mt-1">Jam reguler pengisian laporan telah ditutup, namun Anda memiliki <strong>ijin buka kunci dari Admin</strong> untuk mengisi tanggal susulan. Silakan pilih tanggal pada dropdown di bawah.</p>
                         </div>
                     @endif
-                    
+
                     <form action="{{ route('pjlp.laporan.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4 sm:space-y-5">
                         @csrf
-                        
-                        <!-- Input Tanggal (Dikunci Hanya Hari Ini) -->
+
+                        <!-- Input / Dropdown Tanggal Tugas -->
                         <div>
                             <label for="tanggal_tugas" class="block text-sm font-bold text-gray-700 mb-1">Tanggal Tugas</label>
-                            <input type="date" name="tanggal_tugas" id="tanggal_tugas" 
-                                value="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}" 
-                                min="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}" 
-                                max="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}" 
-                                class="block w-full border-gray-300 bg-gray-50 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3 cursor-not-allowed" 
-                                readonly required>
-                            <p class="text-[11px] text-gray-500 mt-1">*Dikunci otomatis tanggal hari ini ({{ \Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('d F Y') }}).</p>
+
+                            @if($hasUnlockedDates)
+                                <select name="tanggal_tugas" id="tanggal_tugas" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3 font-semibold text-gray-800" required>
+                                    @if($isOpenReguler)
+                                        <option value="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}">
+                                            📅 Hari Ini ({{ \Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('d F Y') }}) - Reguler
+                                        </option>
+                                    @endif
+                                    @foreach($pengajuanBukaKunciDisetujui as $pbk)
+                                        <option value="{{ \Carbon\Carbon::parse($pbk->tanggal_terlewat)->format('Y-m-d') }}" {{ old('tanggal_tugas') == \Carbon\Carbon::parse($pbk->tanggal_terlewat)->format('Y-m-d') ? 'selected' : '' }}>
+                                            ✨ Susulan: {{ \Carbon\Carbon::parse($pbk->tanggal_terlewat)->translatedFormat('d F Y') }} (ACC Admin - s/d Akhir Bulan)
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[11px] text-gray-500 mt-1">*Pilih tanggal hari ini atau tanggal susulan yang telah disetujui Admin.</p>
+                            @else
+                                <input type="date" name="tanggal_tugas" id="tanggal_tugas"
+                                    value="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}"
+                                    min="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}"
+                                    max="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}"
+                                    class="block w-full border-gray-300 bg-gray-50 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3 cursor-not-allowed"
+                                    readonly required>
+                                <p class="text-[11px] text-gray-500 mt-1">*Dikunci otomatis tanggal hari ini ({{ \Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('d F Y') }}).</p>
+                            @endif
                         </div>
 
                         <!-- Dropdown Aktivitas Kinerja -->
@@ -102,7 +137,7 @@
                             <label for="aktivitas_kinerja" class="block text-sm font-bold text-gray-700 mb-1">
                                 Aktivitas Kinerja <span class="text-xs text-blue-600">({{ $jenisPekerjaanUser ?? '' }})</span>
                             </label>
-                            <select name="aktivitas_kinerja" id="aktivitas_kinerja" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3" required {{ !$isOpen ? 'disabled' : '' }}>
+                            <select name="aktivitas_kinerja" id="aktivitas_kinerja" class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3 disabled:bg-gray-100 disabled:cursor-not-allowed" required {{ !$canSubmit ? 'disabled' : '' }}>
                                 <option value="">-- Pilih Aktivitas Kinerja --</option>
                                 @if(isset($listAktivitas))
                                     @foreach($listAktivitas as $aktivitas)
@@ -113,22 +148,22 @@
                                 @endif
                             </select>
                         </div>
-                        
+
                         <!-- Input Uraian Tugas -->
                         <div>
                             <label for="uraian_tugas" class="block text-sm font-bold text-gray-700 mb-1">Uraian Tugas / Pekerjaan</label>
-                            <textarea name="uraian_tugas" id="uraian_tugas" rows="3" 
-                                placeholder="Deskripsikan pekerjaan yang dilakukan secara rinci dan spesifik..." 
-                                class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3 disabled:bg-gray-100 disabled:cursor-not-allowed" 
-                                {{ !$isOpen ? 'disabled' : '' }} required>{{ old('uraian_tugas') }}</textarea>
+                            <textarea name="uraian_tugas" id="uraian_tugas" rows="3"
+                                placeholder="Deskripsikan pekerjaan yang dilakukan secara rinci dan spesifik..."
+                                class="block w-full border-gray-300 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm p-3 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                {{ !$canSubmit ? 'disabled' : '' }} required>{{ old('uraian_tugas') }}</textarea>
                         </div>
 
                         <!-- Input File Upload (Foto/PDF) dengan Preview -->
                         <div>
                             <label for="file_bukti" class="block text-sm font-bold text-gray-700 mb-1">Bukti Kinerja (Foto / PDF)</label>
-                            
-                            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 transition cursor-pointer relative" 
-                                @if($isOpen) onclick="document.getElementById('file_bukti').click()" @endif>
+
+                            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 transition cursor-pointer relative {{ !$canSubmit ? 'bg-gray-50' : '' }}"
+                                @if($canSubmit) onclick="document.getElementById('file_bukti').click()" @endif>
                                 <div class="space-y-1 text-center">
                                     <svg class="mx-auto h-10 w-10 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -139,7 +174,7 @@
                                     </div>
                                     <p class="text-xs text-gray-500">PNG, JPG, PDF (Foto otomatis dikompres)</p>
                                 </div>
-                                <input id="file_bukti" name="file_bukti" type="file" accept=".jpg,.jpeg,.png,.pdf" class="sr-only" {{ !$isOpen ? 'disabled' : '' }} required>
+                                <input id="file_bukti" name="file_bukti" type="file" accept=".jpg,.jpeg,.png,.pdf" class="sr-only" {{ !$canSubmit ? 'disabled' : '' }} required>
                             </div>
 
                             <!-- TAMPILAN PRATINJAU FILE -->
@@ -150,11 +185,11 @@
 
                         <!-- Tombol Kirim -->
                         <div class="pt-4 border-t border-gray-100">
-                            <button type="submit" 
-                                class="w-full inline-flex justify-center items-center px-6 py-3.5 border border-transparent rounded-xl font-bold text-white text-xs sm:text-sm tracking-widest transition ease-in-out duration-150 shadow-md {{ $isOpen ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800' : 'bg-gray-400 cursor-not-allowed' }}" 
-                                {{ !$isOpen ? 'disabled' : '' }}>
+                            <button type="submit"
+                                class="w-full inline-flex justify-center items-center px-6 py-3.5 border border-transparent rounded-xl font-bold text-white text-xs sm:text-sm tracking-widest transition ease-in-out duration-150 shadow-md {{ $canSubmit ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800' : 'bg-gray-400 cursor-not-allowed' }}"
+                                {{ !$canSubmit ? 'disabled' : '' }}>
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                                {{ $isOpen ? 'KIRIM LAPORAN' : 'FORM DITUTUP (06:00 - 18:00 WIB)' }}
+                                {{ $canSubmit ? 'KIRIM LAPORAN' : 'FORM DITUTUP (06:00 - 18:00 WIB)' }}
                             </button>
                         </div>
                     </form>
@@ -164,14 +199,14 @@
 
             <!-- BAGIAN: RIWAYAT LAPORAN TERAKHIR (TERKELOMPOK PER TANGGAL) -->
             <div id="area-riwayat-laporan" class="bg-white overflow-hidden shadow-sm rounded-2xl border border-gray-100 transition-opacity duration-200">
-                
+
                 <!-- HEADER & FORM FILTER -->
                 <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
                         <h3 class="font-bold text-gray-800 text-sm sm:text-base">Riwayat Laporan Kinerja</h3>
                         <p class="text-xs text-gray-500">Daftar laporan harian dikelompokkan berdasarkan tanggal.</p>
                     </div>
-                    
+
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
                         <!-- Form Filter Bulan/Tahun -->
                         <form id="form-filter-laporan" method="GET" action="{{ route('pjlp.laporan.create') }}" class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -198,10 +233,10 @@
                         </form>
 
                         <!-- TOMBOL DOWNLOAD REKAP PDF -->
-                        <a id="btn-download-pdf" 
-                           href="{{ route('pjlp.laporan.export_pdf', ['bulan' => request('bulan', $bulan), 'tahun' => request('tahun', $tahun)]) }}" 
-                           target="_blank" 
-                           class="inline-flex items-center justify-center px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm transition gap-1.5 w-full sm:w-auto" 
+                        <a id="btn-download-pdf"
+                           href="{{ route('pjlp.laporan.export_pdf', ['bulan' => request('bulan', $bulan), 'tahun' => request('tahun', $tahun)]) }}"
+                           target="_blank"
+                           class="inline-flex items-center justify-center px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm transition gap-1.5 w-full sm:w-auto"
                            title="Download Rekap Laporan Bulanan (PDF)">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             <span>Unduh Laporan Kinerja</span>
@@ -227,7 +262,7 @@
                                     $items = $riwayatGrouped->get($tanggal, collect());
                                     $absensiItem = $infoAbsensi->get($tanggal);
                                 @endphp
-                                
+
                                 <!-- PARENT ROW -->
                                 <tr class="hover:bg-blue-50/50 transition cursor-pointer" @click="toggleGroup('{{ $tanggal }}')">
                                     <!-- 1. Tanggal -->
@@ -303,19 +338,27 @@
                                                 @forelse($items as $index => $subItem)
                                                     @php
                                                         $isOtomatis = \Illuminate\Support\Str::contains($subItem->catatan_atasan ?? '', ['Sinkronisasi', 'Diisi otomatis']);
+                                                        $isSusulan = !is_null($subItem->pengajuan_buka_kunci_id);
                                                     @endphp
                                                     <div class="p-3 rounded-xl border space-y-2 {{ $isOtomatis ? 'bg-blue-50/40 border-blue-200' : 'bg-gray-50 border-gray-200/80' }}">
                                                         <div class="flex items-start justify-between gap-2">
                                                             <div>
-                                                                <div class="flex items-center gap-2">
+                                                                <div class="flex items-center gap-2 flex-wrap">
                                                                     <span class="text-[10px] font-bold text-gray-400">#{{ $items->count() - $index }} ({{ \Carbon\Carbon::parse($subItem->created_at)->format('H:i') }} WIB)</span>
+
                                                                     @if($isOtomatis)
                                                                         <span class="px-1.5 py-0.5 text-[9px] font-bold bg-blue-100 text-blue-700 rounded-md">
                                                                             Sinkronisasi Sistem
                                                                         </span>
                                                                     @endif
+
+                                                                    @if($isSusulan)
+                                                                        <span class="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 rounded-md border border-amber-200">
+                                                                            ✨ Susulan (ACC Admin)
+                                                                        </span>
+                                                                    @endif
                                                                 </div>
-                                                                <h5 class="font-bold text-xs sm:text-sm text-blue-800">{{ $subItem->aktivitas_kinerja }}</h5>
+                                                                <h5 class="font-bold text-xs sm:text-sm text-blue-800 mt-0.5">{{ $subItem->aktivitas_kinerja }}</h5>
                                                             </div>
 
                                                             <!-- Status Badge -->
@@ -388,12 +431,12 @@
             </div>
 
             <!-- MODAL PREVIEW BUKTI -->
-            <div x-show="showModal" x-cloak 
-                 @keydown.escape.window="closeModal()" 
+            <div x-show="showModal" x-cloak
+                 @keydown.escape.window="closeModal()"
                  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm transition-opacity">
-                
+
                 <div class="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200 transform transition-all" @click.away="closeModal()">
-                    
+
                     <div class="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
                         <h3 class="text-sm font-bold text-gray-800">Pratinjau Bukti Kinerja</h3>
                         <button type="button" @click="closeModal()" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition focus:outline-none" title="Tutup">
@@ -409,6 +452,43 @@
                             <iframe :src="modalUrl" class="w-full h-[65vh] rounded-xl border border-gray-200"></iframe>
                         </template>
                     </div>
+                </div>
+            </div>
+
+            <!-- MODAL PENGAJUAN BUKA KUNCI -->
+            <div x-show="showBukaKunciModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div x-show="showBukaKunciModal" x-transition.opacity class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showBukaKunciModal = false"></div>
+
+                <div x-show="showBukaKunciModal" x-transition class="relative bg-white rounded-2xl p-6 max-w-md w-full text-left shadow-2xl z-10">
+                    <button type="button" @click="showBukaKunciModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="bg-amber-100 p-2.5 rounded-xl text-amber-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-800">Ajukan Buka Kunci</h3>
+                            <p class="text-[11px] text-gray-500">Ajukan izin mengisi laporan terlewat ke Admin.</p>
+                        </div>
+                    </div>
+
+                    <form action="{{ route('pjlp.buka_kunci.store') }}" method="POST" class="space-y-4">
+                        @csrf
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Laporan (Yang Terkunci)</label>
+                            <input type="date" name="tanggal_pengajuan" max="{{ \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d') }}" class="w-full border-gray-300 rounded-xl text-sm p-3 focus:ring-amber-500 focus:border-amber-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Alasan Pengajuan Buka Kunci</label>
+                            <textarea name="alasan" rows="3" class="w-full border-gray-300 rounded-xl text-sm p-3 focus:ring-amber-500 focus:border-amber-500" placeholder="Jelaskan alasan kendala/keterlambatan pengisian laporan..." required></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                            <button type="button" @click="showBukaKunciModal = false" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50">Batal</button>
+                            <button type="submit" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow transition">Kirim Pengajuan</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -437,7 +517,7 @@
 
     <!-- Script Library Browser Image Compression -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
-    
+
     <!-- LOGIKA ALPINE.JS & VANILLA JS AJAX (MURNI TANPA JQUERY) -->
     <script>
         function laporanPage() {
@@ -446,6 +526,7 @@
                 showModal: false,
                 modalUrl: '',
                 modalFileType: 'image',
+                showBukaKunciModal: false,
 
                 toggleGroup(groupKey) {
                     this.expandedGroup = this.expandedGroup === groupKey ? null : groupKey;
@@ -483,7 +564,7 @@
                     if (!file.type.startsWith('image/')) {
                         if (file.size > 2 * 1024 * 1024) {
                             alert('Dokumen PDF maksimal berukuran 2 MB.');
-                            event.target.value = ''; 
+                            event.target.value = '';
                             fileNameDisplay.classList.add('hidden');
                         } else {
                             fileStatusText.textContent = "📄 Dokumen PDF siap diunggah: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
@@ -495,9 +576,9 @@
                     try {
                         let originalName = file.name;
                         fileStatusText.textContent = "⏳ Mengompres gambar... mohon tunggu sejenak.";
-                        
+
                         const compressedFile = await imageCompression(file, options);
-                        
+
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(new File([compressedFile], originalName, { type: file.type }));
                         fileInput.files = dataTransfer.files;
@@ -506,7 +587,7 @@
                     } catch (error) {
                         console.error('Terjadi kesalahan saat kompresi:', error);
                         alert('Gagal mengompres gambar otomatis. Silakan coba pilih file gambar lain.');
-                        event.target.value = ''; 
+                        event.target.value = '';
                         fileNameDisplay.classList.add('hidden');
                     }
                 });
@@ -522,7 +603,7 @@
                     const formData = new FormData(form);
                     const params = new URLSearchParams(formData);
                     const url = form.action + '?' + params.toString();
-                    
+
                     // Update tautan Download PDF secara real-time saat filter disubmit
                     updatePdfLink(params.get('bulan'), params.get('tahun'));
                     loadRiwayatFetch(url);

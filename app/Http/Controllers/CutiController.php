@@ -19,10 +19,14 @@ class CutiController extends Controller
 
         // Ambil filter tahun dari URL (default tahun berjalan saat ini)
         $tahun = $request->input('tahun', date('Y'));
+        $statusValidasi = $request->input('status_validasi', 'all');
 
         // Ambil riwayat cuti pegawai yang sedang login sesuai tahun yang dipilih
         $riwayatCuti = Cuti::where('user_id', Auth::id())
                         ->whereYear('tanggal_mulai', $tahun)
+                        ->when($statusValidasi !== 'all', function($query) use ($statusValidasi) {
+                            return $query->where('status_validasi', $statusValidasi);
+                        })
                         ->orderBy('created_at', 'desc')
                         ->get();
 
@@ -39,11 +43,11 @@ class CutiController extends Controller
         foreach ($cutiTahunanDisetujui as $itemCuti) {
             $mulai = Carbon::parse($itemCuti->tanggal_mulai);
             $selesai = Carbon::parse($itemCuti->tanggal_selesai);
-            
+
             while ($mulai->lte($selesai)) {
                 $isWeekend = $mulai->isWeekend();
                 $isLiburNasional = in_array($mulai->format('Y-m-d'), $daftarLibur);
-                
+
                 if (!$isWeekend && !$isLiburNasional) {
                     $totalCutiTerpakai++;
                 }
@@ -55,7 +59,7 @@ class CutiController extends Controller
         $sisaCuti = max(0, $kuotaTahun - $totalCutiTerpakai);
 
         // Mengirimkan $daftarLibur ke view untuk kalkulasi real-time via JS
-        return view('pjlp.cuti.index', compact('riwayatCuti', 'sisaCuti', 'tahun', 'daftarLibur'));
+        return view('pjlp.cuti.index', compact('riwayatCuti', 'sisaCuti', 'tahun', 'daftarLibur', 'statusValidasi'));
     }
 
     // 2. Memproses Pengajuan Cuti
@@ -103,11 +107,11 @@ class CutiController extends Controller
         while ($tanggalBerjalan->lte($selesai)) {
             $isWeekend = $tanggalBerjalan->isWeekend();
             $isLiburNasional = in_array($tanggalBerjalan->format('Y-m-d'), $daftarLibur);
-            
+
             if (!$isWeekend && !$isLiburNasional) {
                 $jumlahHariCuti++;
             }
-            
+
             $tanggalBerjalan->addDay();
         }
 

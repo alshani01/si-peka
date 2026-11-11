@@ -8,12 +8,12 @@
         .header-table { width: 100%; border-collapse: collapse; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 12px; }
         .header-title { text-align: center; line-height: 1.3; }
         .info-table { width: 100%; margin-bottom: 10px; font-size: 9px; font-weight: bold; }
-        
+
         table.data-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
         table.data-table th, table.data-table td { border: 1px solid #000; padding: 5px 4px; text-align: center; }
         table.data-table th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; font-size: 8px; }
         table.data-table td.left { text-align: left; }
-        
+
         .footer { margin-top: 15px; width: 100%; font-size: 8px; text-align: right; color: #555; }
     </style>
 </head>
@@ -45,7 +45,13 @@
         <tr>
             <td width="12%">PERIODE</td>
             <td width="2%">:</td>
-            <td>01 {{ strtoupper($namaBulan) }} {{ $tahun }} s/d {{ \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->endOfMonth()->format('d') }} {{ strtoupper($namaBulan) }} {{ $tahun }}</td>
+            <td>
+                @if(isset($tipeFilter) && $tipeFilter === 'harian')
+                    {{ strtoupper(\Carbon\Carbon::parse($tanggal ?? now())->translatedFormat('d F Y')) }}
+                @else
+                    01 {{ strtoupper($namaBulan) }} {{ $tahun }} s/d {{ \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->endOfMonth()->format('d') }} {{ strtoupper($namaBulan) }} {{ $tahun }}
+                @endif
+            </td>
         </tr>
     </table>
 

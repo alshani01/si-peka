@@ -1,8 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Manajemen Data Pegawai') }}
-        </h2>
+        <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Manajemen Data Pegawai & Dashboard Admin') }}
+            </h2>
+        </div>
     </x-slot>
 
     <style>
@@ -11,7 +13,7 @@
 
     <div x-data="pegawaiPage()" class="py-4 sm:py-6 md:py-12 pb-32 md:pb-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            
+
             @if (session('success'))
                 <div class="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-2xl shadow-sm flex items-center gap-3">
                     <svg class="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -33,33 +35,43 @@
                 </div>
             @endif
 
-            <!-- KARTU STATISTIK ADMINISTRATOR -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                <a href="{{ route('admin.pegawai.index', ['role' => 'pjlp']) }}" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500 hover:shadow-md hover:bg-blue-50 transition cursor-pointer">
+<!-- KARTU STATISTIK ADMINISTRATOR -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+                <a href="{{ route('admin.pegawai.index', ['role' => 'pjlp']) }}" class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500 hover:shadow-md hover:bg-blue-50 transition cursor-pointer flex flex-col justify-between">
                     <p class="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Total PJLP / P3K</p>
-                    <p class="text-lg md:text-2xl font-extrabold text-gray-800 mt-1">{{ $totalPegawai }} <span class="text-xs font-normal text-gray-500">Orang</span></p>
+                    <p class="text-base sm:text-lg md:text-2xl font-extrabold text-gray-800 mt-1">{{ $totalPegawai ?? 0 }} <span class="text-[10px] sm:text-xs font-normal text-gray-500">Orang</span></p>
                 </a>
 
-                <a href="{{ route('admin.pegawai.index', ['role' => 'atasan']) }}" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-indigo-500 hover:shadow-md hover:bg-indigo-50 transition cursor-pointer">
+                <a href="{{ route('admin.pegawai.index', ['role' => 'atasan']) }}" class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-indigo-500 hover:shadow-md hover:bg-indigo-50 transition cursor-pointer flex flex-col justify-between">
                     <p class="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Atasan</p>
-                    <p class="text-lg md:text-2xl font-extrabold text-gray-800 mt-1">{{ $totalAtasan }} <span class="text-xs font-normal text-gray-500">Orang</span></p>
+                    <p class="text-base sm:text-lg md:text-2xl font-extrabold text-gray-800 mt-1">{{ $totalAtasan ?? 0 }} <span class="text-[10px] sm:text-xs font-normal text-gray-500">Orang</span></p>
                 </a>
 
-                <a href="#" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-amber-500 hover:shadow-md transition">
+                <!-- LAPORAN PENDING -->
+                <a href="{{ route('admin.kinerja.rekap', ['status_validasi' => 'pending']) }}" class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-amber-500 hover:shadow-md hover:bg-amber-50 transition cursor-pointer flex flex-col justify-between">
                     <p class="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Laporan Pending</p>
-                    <p class="text-lg md:text-2xl font-extrabold text-amber-600 mt-1">{{ $laporanPending }} <span class="text-[10px] font-normal text-gray-400 block sm:inline">({{ date('M Y') }})</span></p>
+                    <p class="text-base sm:text-lg md:text-2xl font-extrabold text-amber-600 mt-1">{{ $laporanPending ?? 0 }} <span class="text-[9px] sm:text-[10px] font-normal text-gray-400 block sm:inline">({{ date('M Y') }})</span></p>
                 </a>
 
-                <a href="{{ route('admin.absensi.rekap', ['status' => 'pending']) }}" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-rose-500 hover:shadow-md hover:bg-rose-50 transition cursor-pointer">
+                <!-- ABSEN PENDING -->
+                <a href="{{ route('admin.absensi.rekap', ['status' => 'pending']) }}" class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-rose-500 hover:shadow-md hover:bg-rose-50 transition cursor-pointer flex flex-col justify-between">
                     <p class="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Absen Pending</p>
-                    <p class="text-lg md:text-2xl font-extrabold text-rose-600 mt-1">{{ $klarifikasiPending }} <span class="text-[10px] font-normal text-gray-400 block sm:inline">({{ date('M Y') }})</span></p>
+                    <p class="text-base sm:text-lg md:text-2xl font-extrabold text-rose-600 mt-1">{{ $klarifikasiPending ?? 0 }} <span class="text-[9px] sm:text-[10px] font-normal text-gray-400 block sm:inline">({{ date('M Y') }})</span></p>
                 </a>
 
-                <a href="#" class="col-span-2 sm:col-span-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-purple-500 hover:shadow-md transition">
+                <!-- CUTI PENDING -->
+                <a href="{{ route('admin.absensi.rekap', ['status' => 'pending', 'tipe' => 'cuti']) }}" class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-purple-500 hover:shadow-md hover:bg-purple-50 transition cursor-pointer flex flex-col justify-between">
                     <p class="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Cuti Pending</p>
-                    <p class="text-lg md:text-2xl font-extrabold text-purple-600 mt-1">{{ $cutiPending }} <span class="text-[10px] font-normal text-gray-400 block sm:inline">({{ date('M Y') }})</span></p>
+                    <p class="text-base sm:text-lg md:text-2xl font-extrabold text-purple-600 mt-1">{{ $cutiPending ?? 0 }} <span class="text-[9px] sm:text-[10px] font-normal text-gray-400 block sm:inline">({{ date('M Y') }})</span></p>
+                </a>
+
+                <!-- BUKA KUNCI PENDING -->
+                <a href="{{ route('admin.kinerja.rekap', ['tab' => 'buka_kunci']) }}" class="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-emerald-500 hover:shadow-md hover:bg-emerald-50 transition cursor-pointer flex flex-col justify-between">
+                    <p class="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Laporan Susulan</p>
+                    <p class="text-base sm:text-lg md:text-2xl font-extrabold text-emerald-600 mt-1">{{ $bukaKunciPending ?? 0 }} <span class="text-[9px] sm:text-[10px] font-normal text-gray-400 block sm:inline">Pending</span></p>
                 </a>
             </div>
+
 
             <!-- TAB NAVIGASI DESKTOP (4 TAB) -->
             <div class="hidden sm:flex bg-white p-2 rounded-2xl shadow-sm border border-gray-100 space-x-1">
@@ -85,14 +97,13 @@
                             <h3 class="font-bold text-gray-800 text-sm md:text-base">Daftar Akun Pengguna</h3>
                             <p class="text-xs text-gray-500">Kelola informasi akun, role, jabatan, dan status pegawai.</p>
                         </div>
-                        
+
                         <div class="flex items-center gap-2">
                             <a href="{{ route('admin.pegawai.export_pdf') }}" target="_blank" class="inline-flex items-center justify-center px-4 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition shadow w-fit">
                                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 Unduh Daftar Pegawai
                             </a>
 
-                            {{-- HANYA DITAMPILKAN UNTUK ROLE ADMIN --}}
                             @if (auth()->user()->role === 'admin')
                                 <a href="{{ route('admin.pegawai.create') }}" class="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition shadow w-fit">
                                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -105,7 +116,7 @@
                     <form id="form-filter-pegawai" @submit.prevent="filterTable" method="GET" action="{{ route('admin.pegawai.index') }}" class="space-y-3 pt-2">
                         <div class="flex flex-col sm:flex-row gap-2">
                             <div class="relative flex-1">
-                                <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama, NRK/NIP/ID PJLP, jabatan..." class="w-full border-gray-300 rounded-xl text-xs sm:text-sm p-2.5 pl-9 focus:ring-blue-500">
+                                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari nama, NRK/NIP/ID PJLP, jabatan..." class="w-full border-gray-300 rounded-xl text-xs sm:text-sm p-2.5 pl-9 focus:ring-blue-500">
                                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             </div>
                             <div class="flex gap-2">
@@ -118,19 +129,19 @@
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1">Kategori Pegawai</label>
                                 <select name="role" @change="filterTable" class="w-full border-gray-300 rounded-xl text-xs p-2.5">
-                                    <option value="all" {{ $roleFilter == 'all' ? 'selected' : '' }}>Semua Kategori</option>
-                                    <option value="pimpinan" {{ $roleFilter == 'pimpinan' ? 'selected' : '' }}>Pimpinan</option>
-                                    <option value="atasan" {{ $roleFilter == 'atasan' ? 'selected' : '' }}>Atasan</option>
-                                    <option value="p3k" {{ $roleFilter == 'p3k' ? 'selected' : '' }}>P3K</option>
-                                    <option value="pjlp" {{ $roleFilter == 'pjlp' ? 'selected' : '' }}>PJLP</option>
+                                    <option value="all" {{ ($roleFilter ?? 'all') == 'all' ? 'selected' : '' }}>Semua Kategori</option>
+                                    <option value="pimpinan" {{ ($roleFilter ?? '') == 'pimpinan' ? 'selected' : '' }}>Pimpinan</option>
+                                    <option value="atasan" {{ ($roleFilter ?? '') == 'atasan' ? 'selected' : '' }}>Atasan</option>
+                                    <option value="p3k" {{ ($roleFilter ?? '') == 'p3k' ? 'selected' : '' }}>P3K</option>
+                                    <option value="pjlp" {{ ($roleFilter ?? '') == 'pjlp' ? 'selected' : '' }}>PJLP</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1">Status Akun</label>
                                 <select name="status" @change="filterTable" class="w-full border-gray-300 rounded-xl text-xs p-2.5">
-                                    <option value="all" {{ $statusFilter == 'all' ? 'selected' : '' }}>Semua Status</option>
-                                    <option value="aktif" {{ $statusFilter == 'aktif' ? 'selected' : '' }}>● Aktif</option>
-                                    <option value="nonaktif" {{ $statusFilter == 'nonaktif' ? 'selected' : '' }}>● Nonaktif</option>
+                                    <option value="all" {{ ($statusFilter ?? 'all') == 'all' ? 'selected' : '' }}>Semua Status</option>
+                                    <option value="aktif" {{ ($statusFilter ?? '') == 'aktif' ? 'selected' : '' }}>● Aktif</option>
+                                    <option value="nonaktif" {{ ($statusFilter ?? '') == 'nonaktif' ? 'selected' : '' }}>● Nonaktif</option>
                                 </select>
                             </div>
                         </div>
@@ -146,7 +157,6 @@
                                 <th class="p-3 border-b border-gray-200">Role & Status</th>
                                 <th class="p-3 border-b border-gray-200">Jabatan / Unit Kerja</th>
                                 <th class="p-3 border-b border-gray-200">Atasan Penilai</th>
-                                {{-- HEADER AKSI HANYA TAMPIL UNTUK ADMIN --}}
                                 @if (auth()->user()->role === 'admin')
                                     <th class="p-3 text-center border-b border-gray-200">Aksi</th>
                                 @endif
@@ -173,9 +183,9 @@
                                         </div>
                                     </td>
                                     <td class="p-3 align-middle whitespace-nowrap">
-                                        <span class="px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-full 
-                                            {{ $user->role === 'pimpinan' ? 'bg-purple-100 text-purple-800' : 
-                                              ($user->role === 'atasan' ? 'bg-indigo-100 text-indigo-800' : 
+                                        <span class="px-2.5 py-1 text-[10px] font-extrabold uppercase rounded-full
+                                            {{ $user->role === 'pimpinan' ? 'bg-purple-100 text-purple-800' :
+                                              ($user->role === 'atasan' ? 'bg-indigo-100 text-indigo-800' :
                                               ($user->role === 'p3k' ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800')) }}">
                                             {{ strtoupper($user->kategori_pegawai ?? $user->role) }}
                                         </span>
@@ -195,7 +205,6 @@
                                             <span class="text-xs text-gray-400 italic">-</span>
                                         @endif
                                     </td>
-                                    {{-- TOMBOL EDIT & HAPUS HANYA TAMPIL UNTUK ADMIN --}}
                                     @if (auth()->user()->role === 'admin')
                                         <td class="p-3 align-middle text-center whitespace-nowrap space-x-1">
                                             <a href="{{ route('admin.pegawai.edit', $user->id) }}" class="inline-block px-3 py-1.5 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition shadow-sm">
@@ -263,7 +272,6 @@
                                     </div>
                                 @endif
 
-                                {{-- AKSI MOBILE HANYA UNTUK ADMIN --}}
                                 @if (auth()->user()->role === 'admin')
                                     <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
                                         <a href="{{ route('admin.pegawai.edit', $user->id) }}" class="px-3 py-1.5 bg-amber-500 text-white rounded-xl font-bold shadow-sm">Edit Akun</a>
@@ -284,11 +292,11 @@
                 @endif
             </div>
 
-            <!-- MODAL KONFIRMASI HAPUS AKUN (HANYA DI-RENDER JIKA ADMIN) -->
+            <!-- MODAL KONFIRMASI HAPUS AKUN -->
             @if (auth()->user()->role === 'admin')
                 <div x-show="openDeleteModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div x-show="openDeleteModal" x-transition.opacity class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="openDeleteModal = false"></div>
-                    
+
                     <div x-show="openDeleteModal" x-transition class="relative bg-white rounded-2xl p-6 max-w-sm w-full text-left shadow-2xl z-10 border border-gray-100 space-y-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0">
@@ -307,7 +315,7 @@
                         <form :action="deleteActionUrl" method="POST" class="space-y-4 pt-2">
                             @csrf
                             @method('DELETE')
-                            
+
                             <template x-if="deleteUserRole === 'atasan' || deleteUserRole === 'pimpinan'">
                                 <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
                                     <label class="block text-xs font-bold text-amber-800 mb-1">
@@ -317,9 +325,11 @@
                                     <p class="text-[10px] text-amber-700 mb-2 leading-tight">Jika pegawai ini memiliki bawahan, pilih atasan pengganti untuk memindahkan mereka.</p>
                                     <select name="pengganti_atasan_id" class="w-full text-xs rounded-lg border-amber-300 focus:ring-amber-500 focus:border-amber-500 p-2">
                                         <option value="">-- Pilih Atasan Pengganti (Opsional) --</option>
-                                        @foreach($daftarAtasan as $atasan)
-                                            <option value="{{ $atasan->id }}">{{ $atasan->name }} - {{ $atasan->jenis_pekerjaan }}</option>
-                                        @endforeach
+                                        @if(isset($daftarAtasan))
+                                            @foreach($daftarAtasan as $atasan)
+                                                <option value="{{ $atasan->id }}">{{ $atasan->name }} - {{ $atasan->jenis_pekerjaan }}</option>
+                                            @endforeach
+                                        @endif
                                     </select>
                                 </div>
                             </template>
@@ -404,12 +414,12 @@
                     document.getElementById('area-tabel-pegawai').addEventListener('click', (e) => {
                         const link = e.target.closest('a');
                         if (
-                            link && 
-                            link.href && 
-                            link.href.includes('/admin/pegawai') && 
-                            !link.href.includes('export-pdf') && 
-                            !link.href.includes('tambah') && 
-                            !link.href.includes('create') && 
+                            link &&
+                            link.href &&
+                            link.href.includes('/admin/pegawai') &&
+                            !link.href.includes('export-pdf') &&
+                            !link.href.includes('tambah') &&
+                            !link.href.includes('create') &&
                             !link.href.includes('edit')
                         ) {
                             e.preventDefault();
