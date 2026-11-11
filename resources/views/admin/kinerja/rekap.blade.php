@@ -105,48 +105,45 @@
 
             <!-- KONTAINER REKAPITULASI -->
             <div id="area-tabel-kinerja" @click="handlePaginationClick($event)" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <h3 class="font-bold text-gray-800 text-sm md:text-base">Data Rekapitulasi Kinerja</h3>
-                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                @if(isset($tipeFilter) && $tipeFilter === 'harian')
-                                    {{ \Carbon\Carbon::parse($tanggal ?? date('Y-m-d'))->translatedFormat('d F Y') }}
-                                @else
-                                    {{ \Carbon\Carbon::createFromDate($tahun ?? date('Y'), $bulan ?? date('m'), 1)->translatedFormat('F Y') }}
-                                @endif
-                            </span>
+                <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="font-bold text-gray-800 text-sm md:text-base">Data Rekapitulasi Kinerja</h3>
+                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                    @if(isset($tipeFilter) && $tipeFilter === 'harian')
+                                        {{ \Carbon\Carbon::parse($tanggal ?? date('Y-m-d'))->translatedFormat('d F Y') }}
+                                    @else
+                                        {{ \Carbon\Carbon::createFromDate($tahun ?? date('Y'), $bulan ?? date('m'), 1)->translatedFormat('F Y') }}
+                                    @endif
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5">Suku Dinas Ketahanan Pangan, Kelautan, dan Pertanian Jakarta Selatan</p>
                         </div>
-                        <p class="text-xs text-gray-500 mt-0.5">Suku Dinas Ketahanan Pangan, Kelautan, dan Pertanian Jakarta Selatan</p>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-
-                        <!-- TOMBOL BUKA KUNCI (HANYA ADMIN) -->
+                    @php
+                        $pdfParams = [
+                            'tipe_filter' => $tipeFilter ?? 'bulanan',
+                            'tanggal' => $tanggal ?? date('Y-m-d'),
+                            'bulan' => $bulan ?? date('m'),
+                            'tahun' => $tahun ?? date('Y'),
+                            'search' => $search ?? request('search', ''),
+                            'status_validasi' => $statusValidasi ?? request('status_validasi', '')
+                        ];
+                    @endphp
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
                         @if(auth()->user()->role === 'admin')
-                            <button type="button" @click="showBukaKunciModal = true" class="relative px-4 py-2.5 bg-amber-500 text-white font-bold text-xs rounded-xl hover:bg-amber-600 transition shadow flex items-center justify-center w-full sm:w-auto gap-1.5">
+                            <button type="button" @click="showBukaKunciModal = true" class="relative px-4 py-2.5 bg-amber-500 text-white font-bold text-xs rounded-xl hover:bg-amber-600 transition shadow flex items-center justify-center gap-1.5 shrink-0">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                 <span>Buka Kunci Input</span>
                                 @if(isset($bukaKunciPendingCount) && $bukaKunciPendingCount > 0)
-                                    <span class="px-1.5 py-0.5 bg-rose-600 text-white font-extrabold rounded-full text-[10px] animate-pulse ml-1">
-                                        {{ $bukaKunciPendingCount }}
-                                    </span>
+                                    <span class="px-1.5 py-0.5 bg-rose-600 text-white font-extrabold rounded-full text-[10px] animate-pulse ml-1">{{ $bukaKunciPendingCount }}</span>
                                 @endif
                             </button>
                         @endif
-
-                        @php
-                            $pdfParams = [
-                                'tipe_filter' => $tipeFilter ?? 'bulanan',
-                                'tanggal' => $tanggal ?? date('Y-m-d'),
-                                'bulan' => $bulan ?? date('m'),
-                                'tahun' => $tahun ?? date('Y'),
-                                'search' => $search ?? request('search', ''),
-                                'status_validasi' => $statusValidasi ?? request('status_validasi', '')
-                            ];
-                        @endphp
-                        <a href="{{ route('admin.kinerja.rekap.pdf', $pdfParams) }}" target="_blank" class="px-4 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition shadow flex items-center justify-center w-full sm:w-auto">
-                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <a href="{{ route('admin.kinerja.rekap.pdf', $pdfParams) }}" target="_blank" class="px-4 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition shadow flex items-center justify-center w-full sm:w-auto shrink-0">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 00-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2-2z"/></svg>
                             Unduh Rekap PDF
                         </a>
                     </div>
