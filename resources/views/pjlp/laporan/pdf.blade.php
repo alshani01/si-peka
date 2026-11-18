@@ -152,7 +152,7 @@
         </tr>
         <tr>
             <td style="height: 60px;"></td>
-            <td style="height: 60px;"></td>
+            <td style="height: 60px; vertical-align: middle; font-weight: bold; color: #555; letter-spacing: 1px;">TTD</td>
         </tr>
         <tr>
             <td>
